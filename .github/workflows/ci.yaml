@@ -71,7 +71,7 @@ jobs:
       - name: Test
         run: cargo test --features sysroot-abi -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api -- --quiet
 
-      - name: Check salsa dependency
+      - name: Ensure that `proc-macro-*` crates don't have salsa as a dependency
         run: "! (cargo tree -p proc-macro-srv-cli -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api -i salsa)"
 
   rust:
