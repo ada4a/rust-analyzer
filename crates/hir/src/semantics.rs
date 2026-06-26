@@ -550,7 +550,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode {
-        let node = self.db.parse_or_expand(file_id);
+        let node = file_id.parse_or_expand(self.db);
         self.cache(node.clone(), file_id);
         node
     }

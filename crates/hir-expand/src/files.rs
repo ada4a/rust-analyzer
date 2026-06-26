@@ -94,13 +94,13 @@ pub type AstId<N> = crate::InFile<FileAstId<N>>;
 
 impl<N: AstNode> AstId<N> {
     pub fn to_node(&self, db: &dyn ExpandDatabase) -> N {
-        self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
+        self.to_ptr(db).to_node(&self.file_id.parse_or_expand(db))
     }
     pub fn to_range(&self, db: &dyn ExpandDatabase) -> TextRange {
         self.to_ptr(db).text_range()
     }
     pub fn to_in_file_node(&self, db: &dyn ExpandDatabase) -> crate::InFile<N> {
-        crate::InFile::new(self.file_id, self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id)))
+        crate::InFile::new(self.file_id, self.to_ptr(db).to_node(&self.file_id.parse_or_expand(db)))
     }
     pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> AstPtr<N> {
         self.file_id.ast_id_map(db).get(self.value)
@@ -218,7 +218,7 @@ impl FileIdToSyntax for MacroCallId {
 }
 impl FileIdToSyntax for HirFileId {
     fn file_syntax(self, db: &dyn db::ExpandDatabase) -> SyntaxNode {
-        db.parse_or_expand(self)
+        self.parse_or_expand(db)
     }
 }
 

@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{CallableKind, ClosureStyle, HirDisplay, InFile, db::ExpandDatabase};
+use hir::{CallableKind, ClosureStyle, HirDisplay, InFile};
 use ide_db::{
     famous_defs::FamousDefs,
     source_change::{SourceChange, SourceChangeBuilder},
@@ -150,7 +150,7 @@ fn add_missing_ok_or_some(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let root = ctx.db().parse_or_expand(expr_ptr.file_id);
+    let root = expr_ptr.file_id.parse_or_expand(ctx.db());
     let expr = expr_ptr.value.to_node(&root);
     let hir::FileRange { file_id, range: expr_range } =
         ctx.sema.original_range_opt(expr.syntax())?;
@@ -245,7 +245,7 @@ fn remove_unnecessary_wrapper(
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
     let db = ctx.db();
-    let root = db.parse_or_expand(expr_ptr.file_id);
+    let root = expr_ptr.file_id.parse_or_expand(db);
     let expr = expr_ptr.value.to_node(&root);
     // FIXME: support inside MacroCall?
     let expr = ctx.sema.original_ast_node(expr)?;
@@ -326,7 +326,7 @@ fn remove_semicolon(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let root = ctx.db().parse_or_expand(expr_ptr.file_id);
+    let root = expr_ptr.file_id.parse_or_expand(ctx.db());
     let expr = expr_ptr.value.to_node(&root);
     if !d.actual.is_unit() {
         return None;
@@ -364,7 +364,7 @@ fn str_ref_to_owned(
         return None;
     }
 
-    let root = ctx.db().parse_or_expand(expr_ptr.file_id);
+    let root = expr_ptr.file_id.parse_or_expand(ctx.db());
     let expr = expr_ptr.value.to_node(&root);
     let hir::FileRange { file_id, range } = ctx.sema.original_range_opt(expr.syntax())?;
 

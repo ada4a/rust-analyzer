@@ -50,9 +50,6 @@ pub enum TokenExpander<'db> {
 
 #[query_group::query_group]
 pub trait ExpandDatabase: SourceDatabase {
-    #[salsa::transparent]
-    fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode;
-
     /// Implementation for the macro case.
     #[salsa::transparent]
     fn parse_macro_expansion(
@@ -334,11 +331,13 @@ fn expand_unimplemented_builtin_macro(span: Span) -> ExpandResult<tt::TopSubtree
 
 /// Main public API -- parses a hir file, not caring whether it's a real
 /// file or a macro expansion.
-fn parse_or_expand(db: &dyn ExpandDatabase, file_id: HirFileId) -> SyntaxNode {
-    match file_id {
-        HirFileId::FileId(file_id) => file_id.parse(db).syntax_node(),
-        HirFileId::MacroFile(macro_file) => {
-            db.parse_macro_expansion(macro_file).value.0.syntax_node()
+impl HirFileId {
+    pub fn parse_or_expand(self, db: &dyn ExpandDatabase) -> SyntaxNode {
+        match self {
+            HirFileId::FileId(file_id) => file_id.parse(db).syntax_node(),
+            HirFileId::MacroFile(macro_file) => {
+                db.parse_macro_expansion(macro_file).value.0.syntax_node()
+            }
         }
     }
 }
@@ -616,7 +615,7 @@ fn macro_expand<'db>(
 }
 
 fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
-    let root = db.parse_or_expand(ast.file_id);
+    let root = ast.file_id.parse_or_expand(db);
     let ast_id_map = AstIdMap::from_source(&root);
     let span_map = &db.span_map(ast.file_id);
 

@@ -1136,7 +1136,7 @@ impl HirFileId {
 impl HirFileId {
     #[salsa::tracked(lru = 1024, returns(ref))]
     pub fn ast_id_map(self, db: &dyn ExpandDatabase) -> AstIdMap {
-        AstIdMap::from_source(&db.parse_or_expand(self))
+        AstIdMap::from_source(&self.parse_or_expand(db))
     }
 }
 
