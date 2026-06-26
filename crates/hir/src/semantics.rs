@@ -690,7 +690,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn derive_helpers_in_scope(&self, adt: &ast::Adt) -> Option<Vec<(Symbol, Symbol)>> {
         let sa = self.analyze_no_infer(adt.syntax())?;
-        let id = self.db.ast_id_map(sa.file_id).ast_id(adt);
+        let id = sa.file_id.ast_id_map(self.db).ast_id(adt);
         let result = sa
             .resolver
             .def_map()
@@ -713,7 +713,7 @@ impl<'db> SemanticsImpl<'db> {
         })?;
         let attr_name = attr.path().and_then(|it| it.as_single_name_ref())?.as_name();
         let sa = self.analyze_no_infer(adt.syntax())?;
-        let id = self.db.ast_id_map(sa.file_id).ast_id(&adt);
+        let id = sa.file_id.ast_id_map(self.db).ast_id(&adt);
         let res: Vec<_> = sa
             .resolver
             .def_map()
@@ -1497,7 +1497,7 @@ impl<'db> SemanticsImpl<'db> {
                                     self.analyze_impl(InFile::new(expansion, &parent), None, false)
                                 })?
                                 .resolver;
-                            let id = db.ast_id_map(expansion).ast_id(&adt);
+                            let id = expansion.ast_id_map(db).ast_id(&adt);
                             let helpers = resolver
                                 .def_map()
                                 .derive_helpers_in_scope(InFile::new(expansion, id))?;

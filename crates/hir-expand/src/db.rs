@@ -50,10 +50,6 @@ pub enum TokenExpander<'db> {
 
 #[query_group::query_group]
 pub trait ExpandDatabase: SourceDatabase {
-    #[salsa::invoke(ast_id_map)]
-    #[salsa::transparent]
-    fn ast_id_map(&self, file_id: HirFileId) -> &AstIdMap;
-
     #[salsa::transparent]
     fn resolve_span(&self, span: Span) -> FileRange;
 
@@ -146,7 +142,7 @@ fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId, edition: Edition) ->
 fn resolve_span(db: &dyn ExpandDatabase, Span { range, anchor, ctx: _ }: Span) -> FileRange {
     let file_id = EditionedFileId::from_span_file_id(db, anchor.file_id);
     let anchor_offset =
-        db.ast_id_map(file_id.into()).get_erased(anchor.ast_id).text_range().start();
+        HirFileId::from(file_id).ast_id_map(db).get_erased(anchor.ast_id).text_range().start();
     FileRange { file_id, range: range + anchor_offset }
 }
 
@@ -329,11 +325,6 @@ fn expand_unimplemented_builtin_macro(span: Span) -> ExpandResult<tt::TopSubtree
         tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
         ExpandError::other(span, "this built-in macro is not implemented"),
     )
-}
-
-#[salsa::tracked(lru = 1024, returns(ref))]
-fn ast_id_map(db: &dyn ExpandDatabase, file_id: HirFileId) -> AstIdMap {
-    AstIdMap::from_source(&db.parse_or_expand(file_id))
 }
 
 /// Main public API -- parses a hir file, not caring whether it's a real
@@ -621,7 +612,7 @@ fn macro_expand<'db>(
 
 fn proc_macro_span(db: &dyn ExpandDatabase, ast: AstId<ast::Fn>) -> Span {
     let root = db.parse_or_expand(ast.file_id);
-    let ast_id_map = &db.ast_id_map(ast.file_id);
+    let ast_id_map = AstIdMap::from_source(&root);
     let span_map = &db.span_map(ast.file_id);
 
     let node = ast_id_map.get(ast.value).to_node(&root);

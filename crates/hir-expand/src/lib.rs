@@ -38,7 +38,8 @@ use std::{hash::Hash, ops};
 use base_db::Crate;
 use either::Either;
 use span::{
-    Edition, ErasedFileAstId, FileAstId, NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER, Span, SyntaxContext,
+    AstIdMap, Edition, ErasedFileAstId, FileAstId, NO_DOWNMAP_ERASED_FILE_AST_ID_MARKER, Span,
+    SyntaxContext,
 };
 use syntax::{
     SyntaxNode, SyntaxToken, TextRange, TextSize,
@@ -556,10 +557,10 @@ impl MacroDefId {
             | MacroDefKind::BuiltInDerive(id, _)
             | MacroDefKind::BuiltInEager(id, _)
             | MacroDefKind::UnimplementedBuiltIn(id) => {
-                id.with_value(db.ast_id_map(id.file_id).get(id.value).text_range())
+                id.with_value(id.file_id.ast_id_map(db).get(id.value).text_range())
             }
             MacroDefKind::ProcMacro(id, _, _) => {
-                id.with_value(db.ast_id_map(id.file_id).get(id.value).text_range())
+                id.with_value(id.file_id.ast_id_map(db).get(id.value).text_range())
             }
         }
     }
@@ -1127,6 +1128,14 @@ impl HirFileId {
             HirFileId::FileId(it) => Some(it),
             HirFileId::MacroFile(_) => None,
         }
+    }
+}
+
+#[salsa::tracked]
+impl HirFileId {
+    #[salsa::tracked(lru = 1024, returns(ref))]
+    pub fn ast_id_map(self, db: &dyn ExpandDatabase) -> AstIdMap {
+        AstIdMap::from_source(&db.parse_or_expand(self))
     }
 }
 

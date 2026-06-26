@@ -103,7 +103,7 @@ impl<N: AstNode> AstId<N> {
         crate::InFile::new(self.file_id, self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id)))
     }
     pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> AstPtr<N> {
-        db.ast_id_map(self.file_id).get(self.value)
+        self.file_id.ast_id_map(db).get(self.value)
     }
     pub fn erase(&self) -> ErasedAstId {
         crate::InFile::new(self.file_id, self.value.erase())
@@ -124,7 +124,7 @@ impl ErasedAstId {
         self.to_ptr(db).text_range()
     }
     pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> SyntaxNodePtr {
-        db.ast_id_map(self.file_id).get_erased(self.value)
+        self.file_id.ast_id_map(db).get_erased(self.value)
     }
 }
 
