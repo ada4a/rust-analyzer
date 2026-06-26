@@ -50,13 +50,6 @@ pub enum TokenExpander<'db> {
 
 #[query_group::query_group]
 pub trait ExpandDatabase: SourceDatabase {
-    /// Implementation for the macro case.
-    #[salsa::transparent]
-    fn parse_macro_expansion(
-        &self,
-        macro_file: MacroCallId,
-    ) -> &ExpandResult<(Parse<SyntaxNode>, ExpansionSpanMap)>;
-
     #[salsa::transparent]
     #[salsa::invoke(SpanMap::new)]
     fn span_map(&self, file_id: HirFileId) -> SpanMap<'_>;
@@ -336,28 +329,31 @@ impl HirFileId {
         match self {
             HirFileId::FileId(file_id) => file_id.parse(db).syntax_node(),
             HirFileId::MacroFile(macro_file) => {
-                db.parse_macro_expansion(macro_file).value.0.syntax_node()
+                macro_file.parse_macro_expansion(db).value.0.syntax_node()
             }
         }
     }
 }
 
-// FIXME: We should verify that the parsed node is one of the many macro node variants we expect
-// instead of having it be untyped
-#[salsa_macros::tracked(returns(ref), lru = 512)]
-fn parse_macro_expansion(
-    db: &dyn ExpandDatabase,
-    macro_file: MacroCallId,
-) -> ExpandResult<(Parse<SyntaxNode>, ExpansionSpanMap)> {
-    let _p = tracing::info_span!("parse_macro_expansion").entered();
-    let loc = macro_file.loc(db);
-    let expand_to = loc.expand_to();
-    let mbe::ValueResult { value: (tt, matched_arm), err } = macro_expand(db, macro_file, loc);
+#[salsa::tracked]
+impl MacroCallId {
+    // FIXME: We should verify that the parsed node is one of the many macro node variants we expect
+    // instead of having it be untyped
+    #[salsa::tracked(returns(ref), lru = 512)]
+    pub fn parse_macro_expansion(
+        self,
+        db: &dyn ExpandDatabase,
+    ) -> ExpandResult<(Parse<SyntaxNode>, ExpansionSpanMap)> {
+        let _p = tracing::info_span!("parse_macro_expansion").entered();
+        let loc = self.loc(db);
+        let expand_to = loc.expand_to();
+        let mbe::ValueResult { value: (tt, matched_arm), err } = macro_expand(db, self, loc);
 
-    let (parse, mut rev_token_map) = token_tree_to_syntax_node(db, &tt, expand_to);
-    rev_token_map.matched_arm = matched_arm;
+        let (parse, mut rev_token_map) = token_tree_to_syntax_node(db, &tt, expand_to);
+        rev_token_map.matched_arm = matched_arm;
 
-    ExpandResult { value: (parse, rev_token_map), err }
+        ExpandResult { value: (parse, rev_token_map), err }
+    }
 }
 
 fn parse_macro_expansion_error(
@@ -365,7 +361,7 @@ fn parse_macro_expansion_error(
     macro_call_id: MacroCallId,
 ) -> Option<ExpandResult<Arc<[SyntaxError]>>> {
     let e: ExpandResult<Arc<[SyntaxError]>> =
-        db.parse_macro_expansion(macro_call_id).as_ref().map(|it| Arc::from(it.0.errors()));
+        macro_call_id.parse_macro_expansion(db).as_ref().map(|it| Arc::from(it.0.errors()));
     if e.value.is_empty() && e.err.is_none() { None } else { Some(e) }
 }
 
@@ -378,7 +374,7 @@ pub(crate) fn parse_with_map(
             (file_id.parse(db).to_syntax(), SpanMap::RealSpanMap(db.real_span_map(file_id)))
         }
         HirFileId::MacroFile(macro_file) => {
-            let (parse, map) = &db.parse_macro_expansion(macro_file).value;
+            let (parse, map) = &macro_file.parse_macro_expansion(db).value;
             (parse.clone(), SpanMap::ExpansionSpanMap(map))
         }
     }

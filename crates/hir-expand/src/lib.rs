@@ -934,7 +934,7 @@ impl<'db> ExpansionInfo<'db> {
         let arg_tt = loc.kind.arg(db);
         let arg_map = db.span_map(arg_tt.file_id);
 
-        let (parse, exp_map) = &db.parse_macro_expansion(macro_file).value;
+        let (parse, exp_map) = &macro_file.parse_macro_expansion(db).value;
         let expanded = InMacroFile { file_id: macro_file, value: parse.syntax_node() };
 
         ExpansionInfo { expanded, loc, arg: arg_tt, exp_map, arg_map }
