@@ -4,7 +4,7 @@ use core::fmt;
 use std::any::Any;
 use std::{panic::RefUnwindSafe, sync};
 
-use base_db::{Crate, CrateBuilderId, CratesIdMap, Env, ProcMacroLoadingError};
+use base_db::{Crate, CrateBuilderId, CratesIdMap, Env, ProcMacroLoadingError, SourceDatabase};
 use intern::Symbol;
 use rustc_hash::FxHashMap;
 use salsa::{Durability, Setter};
@@ -129,7 +129,7 @@ impl ProcMacros {
         _ = Self::builder(Default::default()).durability(durability).new(db);
     }
 
-    fn get_for_crate(&self, db: &dyn ExpandDatabase, krate: Crate) -> Option<Arc<CrateProcMacros>> {
+    fn get_for_crate(&self, db: &dyn SourceDatabase, krate: Crate) -> Option<Arc<CrateProcMacros>> {
         self.by_crate(db).get(&krate).cloned()
     }
 }
@@ -295,7 +295,7 @@ impl CustomProcMacroExpander {
                 ExpandError::new(call_site, ExpandErrorKind::MacroDisabled),
             ),
             id => {
-                let proc_macros = match db.proc_macros_for_crate(def_crate) {
+                let proc_macros = match def_crate.proc_macros(db) {
                     Some(it) => it,
                     None => {
                         return ExpandResult::new(
@@ -367,9 +367,14 @@ impl CustomProcMacroExpander {
     }
 }
 
-pub(crate) fn proc_macros_for_crate(
-    db: &dyn ExpandDatabase,
-    krate: Crate,
-) -> Option<Arc<CrateProcMacros>> {
-    ProcMacros::get(db).get_for_crate(db, krate)
+// FIXME: we probably don't want to expose this
+pub trait CrateExt {
+    fn proc_macros(self, db: &dyn SourceDatabase) -> Option<Arc<CrateProcMacros>>;
+}
+impl CrateExt for Crate {
+    /// Incrementality query to prevent queries from directly depending on `ExpandDatabase::proc_macros`.
+    // TODO: add `#[salsa::tracked]`?
+    fn proc_macros(self, db: &dyn SourceDatabase) -> Option<Arc<CrateProcMacros>> {
+        ProcMacros::get(db).get_for_crate(db, self)
+    }
 }

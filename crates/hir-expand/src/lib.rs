@@ -53,7 +53,7 @@ use crate::{
     },
     db::ExpandDatabase,
     mod_path::ModPath,
-    proc_macro::{CustomProcMacroExpander, ProcMacroKind},
+    proc_macro::{CrateExt, CustomProcMacroExpander, ProcMacroKind},
     span_map::{ExpansionSpanMap, SpanMap},
 };
 
@@ -176,7 +176,7 @@ impl ExpandErrorKind {
                 kind: RenderedExpandError::DISABLED,
             },
             &ExpandErrorKind::MissingProcMacroExpander(def_crate) => {
-                match db.proc_macros_for_crate(def_crate).as_ref().and_then(|it| it.get_error()) {
+                match def_crate.proc_macros(db).as_ref().and_then(|it| it.get_error()) {
                     Some(e) => RenderedExpandError {
                         message: e.to_string(),
                         error: e.is_hard_error(),
