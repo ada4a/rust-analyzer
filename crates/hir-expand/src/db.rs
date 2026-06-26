@@ -51,9 +51,6 @@ pub enum TokenExpander<'db> {
 #[query_group::query_group]
 pub trait ExpandDatabase: SourceDatabase {
     #[salsa::transparent]
-    fn resolve_span(&self, span: Span) -> FileRange;
-
-    #[salsa::transparent]
     fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode;
 
     /// Implementation for the macro case.
@@ -139,11 +136,19 @@ fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId, edition: Edition) ->
     }
 }
 
-fn resolve_span(db: &dyn ExpandDatabase, Span { range, anchor, ctx: _ }: Span) -> FileRange {
-    let file_id = EditionedFileId::from_span_file_id(db, anchor.file_id);
-    let anchor_offset =
-        HirFileId::from(file_id).ast_id_map(db).get_erased(anchor.ast_id).text_range().start();
-    FileRange { file_id, range: range + anchor_offset }
+// FIXME: we probably don't want to expose this
+pub trait SpanExt {
+    fn resolve(self, db: &dyn ExpandDatabase) -> FileRange;
+}
+impl SpanExt for Span {
+    // TODO: add `#[salsa::tracked]`?
+    fn resolve(self, db: &dyn ExpandDatabase) -> FileRange {
+        let Span { range, anchor, ctx: _ } = self;
+        let file_id = EditionedFileId::from_span_file_id(db, anchor.file_id);
+        let anchor_offset =
+            HirFileId::from(file_id).ast_id_map(db).get_erased(anchor.ast_id).text_range().start();
+        FileRange { file_id, range: range + anchor_offset }
+    }
 }
 
 /// This expands the given macro call, but with different arguments. This is
