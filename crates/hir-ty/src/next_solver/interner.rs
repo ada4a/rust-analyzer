@@ -1555,9 +1555,7 @@ impl<'db> Interner for DbInterner<'db> {
     }
 
     fn is_adt_lang_item(self, def_id: Self::AdtId, lang_item: SolverAdtLangItem) -> bool {
-        // FIXME: derive PartialEq on SolverTraitLangItem
-        self.as_adt_lang_item(def_id)
-            .map_or(false, |l| std::mem::discriminant(&l) == std::mem::discriminant(&lang_item))
+        self.as_adt_lang_item(def_id) == Some(lang_item)
     }
 
     fn as_projection_lang_item(
