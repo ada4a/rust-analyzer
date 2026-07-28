@@ -214,7 +214,8 @@ impl<V: PartialEq> ProjectionElem<V> {
 
 pub type PlaceElem = ProjectionElem<LocalId>;
 
-impl<W: crate::next_solver::WorldExposer> GenericTypeVisitable<W> for PlaceElem {
+// SAFETY: ???
+unsafe impl<W: crate::next_solver::WorldExposer> GenericTypeVisitable<W> for PlaceElem {
     fn generic_visit_with(&self, _: &mut W) {}
 }
 

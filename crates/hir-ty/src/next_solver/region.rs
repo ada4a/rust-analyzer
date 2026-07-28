@@ -301,7 +301,8 @@ impl<'db> rustc_type_ir::inherent::Region<DbInterner<'db>> for Region<'db> {
     }
 }
 
-impl<'db, V: super::WorldExposer> GenericTypeVisitable<V> for Region<'db> {
+// SAFETY: manual impl is required in order to handle interned type
+unsafe impl<'db, V: super::WorldExposer> GenericTypeVisitable<V> for Region<'db> {
     fn generic_visit_with(&self, visitor: &mut V) {
         if visitor.on_interned(self.interned).is_continue() {
             self.kind().generic_visit_with(visitor);
@@ -320,3 +321,12 @@ interned_slice!(
     GenericArgOutlivesPredicate<'static>,
 );
 impl_foldable_for_interned_slice!(RegionAssumptions);
+
+/// shim for [`rustc_type_ir::region_constraint`]
+pub mod region_constraint {
+    use super::DbInterner;
+
+    pub type Assumptions<'db> = rustc_type_ir::region_constraint::Assumptions<DbInterner<'db>>;
+    pub type RegionConstraint<'db> =
+        rustc_type_ir::region_constraint::RegionConstraint<DbInterner<'db>>;
+}
