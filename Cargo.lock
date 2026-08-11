@@ -2090,7 +2090,7 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "ra-ap-rustc_abi"
-version = "0.167.1"
+version = "0.168.1"
 dependencies = [
  "bitflags",
  "ra-ap-rustc_hashes",
@@ -2100,25 +2100,25 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_ast_ir"
-version = "0.167.1"
+version = "0.168.1"
 
 [[package]]
 name = "ra-ap-rustc_hashes"
-version = "0.167.1"
+version = "0.168.1"
 dependencies = [
  "rustc-stable-hash",
 ]
 
 [[package]]
 name = "ra-ap-rustc_index"
-version = "0.167.1"
+version = "0.168.1"
 dependencies = [
  "ra-ap-rustc_index_macros",
 ]
 
 [[package]]
 name = "ra-ap-rustc_index_macros"
-version = "0.167.1"
+version = "0.168.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2127,7 +2127,7 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_lexer"
-version = "0.167.1"
+version = "0.168.1"
 dependencies = [
  "memchr",
  "unicode-ident",
@@ -2136,7 +2136,7 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_next_trait_solver"
-version = "0.167.1"
+version = "0.168.1"
 dependencies = [
  "derive-where",
  "ra-ap-rustc_index",
@@ -2147,7 +2147,7 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_parse_format"
-version = "0.167.1"
+version = "0.168.1"
 dependencies = [
  "ra-ap-rustc_lexer",
  "rustc-literal-escaper",
@@ -2155,7 +2155,7 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_pattern_analysis"
-version = "0.167.1"
+version = "0.168.1"
 dependencies = [
  "ra-ap-rustc_index",
  "rustc-hash 2.1.2",
@@ -2166,7 +2166,7 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_type_ir"
-version = "0.167.1"
+version = "0.168.1"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -2185,7 +2185,7 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_type_ir_macros"
-version = "0.167.1"
+version = "0.168.1"
 dependencies = [
  "proc-macro2",
  "quote",

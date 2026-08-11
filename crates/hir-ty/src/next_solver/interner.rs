@@ -440,10 +440,10 @@ pub type BoundVariableKind<'db> = rustc_type_ir::BoundVariableKind<DbInterner<'d
 
 impl<'db> rustc_type_ir::inherent::BoundVarKinds<DbInterner<'db>> for BoundVarKinds<'db> {
     fn from_vars(
-        cx: DbInterner<'db>,
+        _cx: DbInterner<'db>,
         iter: impl IntoIterator<Item = BoundVariableKind<'db>>,
     ) -> Self {
-        Self::new_from_iter(cx, iter)
+        Self::new_from_iter(iter)
     }
 }
 
