@@ -308,7 +308,10 @@ impl<'db> ExprCollector<'db> {
                 BindingAnnotation::Unannotated,
                 HygieneId::ROOT,
             );
-            let args_pat = self.alloc_pat_desugared(Pat::Bind { id: args_binding, subpat: None });
+            let args_pat = self.alloc_pat_desugared_from_expr(
+                Pat::Bind { id: args_binding, subpat: None },
+                syntax_ptr,
+            );
             self.add_definition_to_binding(args_binding, args_pat);
             let elements = arguments
                 .iter()
@@ -362,7 +365,10 @@ impl<'db> ExprCollector<'db> {
             );
             let args_binding =
                 self.alloc_binding(args_name, BindingAnnotation::Unannotated, HygieneId::ROOT);
-            let args_pat = self.alloc_pat_desugared(Pat::Bind { id: args_binding, subpat: None });
+            let args_pat = self.alloc_pat_desugared_from_expr(
+                Pat::Bind { id: args_binding, subpat: None },
+                syntax_ptr,
+            );
             self.add_definition_to_binding(args_binding, args_pat);
             // FIXME: Make this a `super let` when we have this statement.
             let let_statement_2 = Statement::Let {

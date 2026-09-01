@@ -3560,9 +3560,27 @@ impl<'db> ExprCollector<'db> {
         self.store.pat_map.insert(src, id.into());
         id
     }
-    // FIXME: desugared pats don't have ptr, that's wrong and should be fixed somehow.
+    // FIXME: desugared pats don't have ptr, that's wrong and should be fixed.
+    // Migrate to alloc_pat_desugared_with_ptr and then rename back
     fn alloc_pat_desugared(&mut self, pat: Pat) -> PatId {
         self.store.pats.alloc(pat)
+    }
+    #[expect(unused)]
+    fn alloc_pat_desugared_with_ptr(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
+        let src = self.expander.in_file(ptr);
+        let id = self.store.pats.alloc(pat);
+        self.store.pat_map_back.insert(id, src.map(AstPtr::wrap_right));
+        // We intentionally don't fill this as it could overwrite a non-desugared entry
+        // self.store.pat_map.insert(src, id);
+        id
+    }
+    fn alloc_pat_desugared_from_expr(&mut self, pat: Pat, ptr: ExprPtr) -> PatId {
+        let src = self.expander.in_file(ptr);
+        let id = self.store.pats.alloc(pat);
+        self.store.pat_map_back.insert(id, src.map(AstPtr::wrap_left));
+        // We intentionally don't fill this as it could overwrite a non-desugared entry
+        // self.store.expr_map.insert(src, id);
+        id
     }
     fn missing_pat(&mut self) -> PatId {
         self.store.pats.alloc(Pat::Missing)
