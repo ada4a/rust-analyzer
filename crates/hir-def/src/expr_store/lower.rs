@@ -3182,7 +3182,9 @@ impl<'db> ExprCollector<'db> {
                     .map(|pat| {
                         self.with_fresh_binding_expr_root(|this| this.lower_ty_pat_range_side(pat))
                     })
-                    .unwrap_or_else(|| self.lower_ty_pat_range_end(self.lang_items().RangeMin));
+                    .unwrap_or_else(|| {
+                        self.lower_ty_pat_range_end(self.lang_items().RangeMin, ptr)
+                    });
                 let end = range_pat
                     .end()
                     .map(|pat| match range_pat.op_kind() {
@@ -3190,7 +3192,9 @@ impl<'db> ExprCollector<'db> {
                             .with_fresh_binding_expr_root(|this| this.lower_ty_pat_range_side(pat)),
                         Some(ast::RangeOp::Exclusive) => self.lower_excluded_range_end(pat),
                     })
-                    .unwrap_or_else(|| self.lower_ty_pat_range_end(self.lang_items().RangeMax));
+                    .unwrap_or_else(|| {
+                        self.lower_ty_pat_range_end(self.lang_items().RangeMax, ptr)
+                    });
                 self.alloc_pat(
                     Pat::Range {
                         start: Some(start),
@@ -3244,10 +3248,11 @@ impl<'db> ExprCollector<'db> {
     /// When a range has no end specified (`1..` or `1..=`) or no start specified (`..5` or `..=5`),
     /// we instead use a constant of the MAX/MIN of the type.
     /// This way the type system does not have to handle the lack of a start/end.
-    fn lower_ty_pat_range_end(&mut self, lang_item: Option<ConstId>) -> ExprId {
+    fn lower_ty_pat_range_end(&mut self, lang_item: Option<ConstId>, syntax_ptr: PatPtr) -> ExprId {
         self.with_fresh_binding_expr_root(|this| {
-            this.alloc_expr_desugared(
+            this.alloc_expr_desugared_from_pat(
                 this.lang_path(lang_item).map(Expr::Path).unwrap_or(Expr::Missing),
+                syntax_ptr,
             )
         })
     }
@@ -3256,14 +3261,15 @@ impl<'db> ExprCollector<'db> {
     /// This way the type system doesn't have to handle the distinction between inclusive/exclusive ranges.
     fn lower_excluded_range_end(&mut self, pat: ast::Pat) -> ExprId {
         self.with_fresh_binding_expr_root(|this| {
+            let ptr = AstPtr::new(&pat);
             let excluded_end = this.lower_ty_pat_range_side(pat);
             let range_sub_path =
                 this.lang_path(this.lang_items().RangeSub).map(Expr::Path).unwrap_or(Expr::Missing);
-            let range_sub_path = this.alloc_expr_desugared(range_sub_path);
-            this.alloc_expr_desugared(Expr::Call {
-                callee: range_sub_path,
-                args: Box::new([excluded_end]),
-            })
+            let range_sub_path = this.alloc_expr_desugared_from_pat(range_sub_path, ptr);
+            this.alloc_expr_desugared_from_pat(
+                Expr::Call { callee: range_sub_path, args: Box::new([excluded_end]) },
+                ptr,
+            )
         })
     }
 
@@ -3507,6 +3513,15 @@ impl<'db> ExprCollector<'db> {
         // self.store.expr_map.insert(src, id);
         id
     }
+    fn alloc_expr_desugared_from_pat(&mut self, expr: Expr, ptr: PatPtr) -> ExprId {
+        let src = self.expander.in_file(ptr);
+        let id = self.store.exprs.alloc(expr);
+        self.store.pat_map.insert(src, id.into());
+        // We intentionally don't fill this as it could overwrite a non-desugared entry
+        // self.store.expr_map_back.insert(id, src.map(AstPtr::wrap_right));
+        id
+    }
+
     fn missing_expr(&mut self) -> ExprId {
         self.alloc_expr_desugared(Expr::Missing)
     }
