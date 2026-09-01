@@ -10,7 +10,7 @@ use syntax::{
 };
 
 use crate::{
-    expr_store::{HygieneId, lower::ExprCollector, path::Path},
+    expr_store::{ExprPtr, HygieneId, lower::ExprCollector, path::Path},
     hir::{
         Array, BindingAnnotation, Expr, ExprId, Literal, Pat, Statement,
         format_args::{
@@ -162,10 +162,14 @@ impl<'db> ExprCollector<'db> {
                         let from_str = self.ty_rel_lang_path_desugared_expr(
                             lang_items.FormatArguments,
                             sym::from_str,
+                            syntax_ptr,
                         );
                         let sym =
                             if incomplete_lit.is_empty() { sym.clone() } else { Symbol::intern(s) };
-                        let s = self.alloc_expr_desugared(Expr::Literal(Literal::String(sym)));
+                        let s = self.alloc_expr_desugared_with_ptr(
+                            Expr::Literal(Literal::String(sym)),
+                            syntax_ptr,
+                        );
                         let from_str = self.alloc_expr(
                             Expr::Call { callee: from_str, args: Box::new([s]) },
                             syntax_ptr,
@@ -289,9 +293,10 @@ impl<'db> ExprCollector<'db> {
             //     []
             (
                 Vec::new(),
-                self.alloc_expr_desugared(Expr::Array(Array::ElementList {
-                    elements: Box::new([]),
-                })),
+                self.alloc_expr_desugared_with_ptr(
+                    Expr::Array(Array::ElementList { elements: Box::new([]) }),
+                    syntax_ptr,
+                ),
             )
         } else {
             // Generate:
@@ -308,14 +313,18 @@ impl<'db> ExprCollector<'db> {
             let elements = arguments
                 .iter()
                 .map(|arg| {
-                    self.alloc_expr_desugared(Expr::Ref {
-                        expr: arg.expr,
-                        rawness: Rawness::Ref,
-                        mutability: Mutability::Shared,
-                    })
+                    self.alloc_expr_desugared_with_ptr(
+                        Expr::Ref {
+                            expr: arg.expr,
+                            rawness: Rawness::Ref,
+                            mutability: Mutability::Shared,
+                        },
+                        syntax_ptr,
+                    )
                 })
                 .collect();
-            let args_tuple = self.alloc_expr_desugared(Expr::Tuple { exprs: elements });
+            let args_tuple =
+                self.alloc_expr_desugared_with_ptr(Expr::Tuple { exprs: elements }, syntax_ptr);
             // FIXME: Make this a `super let` when we have this statement.
             let let_statement_1 = Statement::Let {
                 pat: args_pat,
@@ -334,17 +343,23 @@ impl<'db> ExprCollector<'db> {
             let args = argmap
                 .iter()
                 .map(|&(arg_index, ty)| {
-                    let args_ident_expr = self.alloc_expr_desugared(Expr::Path(args_path.clone()));
-                    let arg = self.alloc_expr_desugared(Expr::Field {
-                        expr: args_ident_expr,
-                        name: Name::new_tuple_field(arg_index),
-                    });
+                    let args_ident_expr = self
+                        .alloc_expr_desugared_with_ptr(Expr::Path(args_path.clone()), syntax_ptr);
+                    let arg = self.alloc_expr_desugared_with_ptr(
+                        Expr::Field {
+                            expr: args_ident_expr,
+                            name: Name::new_tuple_field(arg_index),
+                        },
+                        syntax_ptr,
+                    );
                     let arg_ptr = arguments.get(arg_index).and_then(|it| it.syntax);
                     self.make_argument(arg_ptr, arg, ty)
                 })
                 .collect();
-            let args =
-                self.alloc_expr_desugared(Expr::Array(Array::ElementList { elements: args }));
+            let args = self.alloc_expr_desugared_with_ptr(
+                Expr::Array(Array::ElementList { elements: args }),
+                syntax_ptr,
+            );
             let args_binding =
                 self.alloc_binding(args_name, BindingAnnotation::Unannotated, HygieneId::ROOT);
             let args_pat = self.alloc_pat_desugared(Pat::Bind { id: args_binding, subpat: None });
@@ -358,7 +373,7 @@ impl<'db> ExprCollector<'db> {
             };
             (
                 vec![let_statement_1, let_statement_2],
-                self.alloc_expr_desugared(Expr::Path(args_path)),
+                self.alloc_expr_desugared_with_ptr(Expr::Path(args_path), syntax_ptr),
             )
         };
 
@@ -366,16 +381,24 @@ impl<'db> ExprCollector<'db> {
         //     unsafe {
         //         <core::fmt::Arguments>::new(b"…", &args)
         //     }
-        let template = self
-            .alloc_expr_desugared(Expr::Literal(Literal::ByteString(bytecode.into_boxed_slice())));
+        let template = self.alloc_expr_desugared_with_ptr(
+            Expr::Literal(Literal::ByteString(bytecode.into_boxed_slice())),
+            syntax_ptr,
+        );
         let call = {
-            let new = self.ty_rel_lang_path_desugared_expr(lang_items.FormatArguments, sym::new);
-            let args = self.alloc_expr_desugared(Expr::Ref {
-                expr: args,
-                rawness: Rawness::Ref,
-                mutability: Mutability::Shared,
-            });
-            self.alloc_expr_desugared(Expr::Call { callee: new, args: Box::new([template, args]) })
+            let new = self.ty_rel_lang_path_desugared_expr(
+                lang_items.FormatArguments,
+                sym::new,
+                syntax_ptr,
+            );
+            let args = self.alloc_expr_desugared_with_ptr(
+                Expr::Ref { expr: args, rawness: Rawness::Ref, mutability: Mutability::Shared },
+                syntax_ptr,
+            );
+            self.alloc_expr_desugared_with_ptr(
+                Expr::Call { callee: new, args: Box::new([template, args]) },
+                syntax_ptr,
+            )
         };
         let call = self.alloc_expr(
             Expr::Unsafe { id: None, statements: Box::new([]), tail: Some(call) },
@@ -477,15 +500,21 @@ impl<'db> ExprCollector<'db> {
             }
             None => self.missing_expr(),
         };
-        self.alloc_expr_desugared(Expr::Call { callee: new_fn, args: Box::new([arg]) })
+        let call = Expr::Call { callee: new_fn, args: Box::new([arg]) };
+        if let Some(ptr) = arg_ptr {
+            self.alloc_expr_desugared_with_ptr(call, ptr)
+        } else {
+            self.alloc_expr_desugared(call)
+        }
     }
 
     fn ty_rel_lang_path_desugared_expr(
         &mut self,
         lang: Option<impl Into<LangItemTarget>>,
         relative_name: Symbol,
+        ptr: ExprPtr,
     ) -> ExprId {
-        self.alloc_expr_desugared(self.ty_rel_lang_path_expr(lang, relative_name))
+        self.alloc_expr_desugared_with_ptr(self.ty_rel_lang_path_expr(lang, relative_name), ptr)
     }
 }
 

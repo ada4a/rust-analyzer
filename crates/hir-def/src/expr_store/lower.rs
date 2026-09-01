@@ -1946,7 +1946,10 @@ impl<'db> ExprCollector<'db> {
         lhs: ExprId,
         rhs: ExprId,
     ) -> ExprId {
-        let fn_path = self.alloc_expr_desugared(self.lang_path_expr(lang_items.RangeInclusiveNew));
+        let fn_path = self.alloc_expr_desugared_with_ptr(
+            self.lang_path_expr(lang_items.RangeInclusiveNew),
+            syntax_ptr,
+        );
         self.alloc_expr(Expr::Call { callee: fn_path, args: Box::new([lhs, rhs]) }, syntax_ptr)
     }
 
