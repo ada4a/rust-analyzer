@@ -2344,7 +2344,8 @@ impl<'db> ExprCollector<'db> {
                     BindingAnnotation::Unannotated,
                     HygieneId::ROOT,
                 );
-                let pat = self.alloc_pat_desugared(Pat::Bind { id: binding, subpat: None });
+                let pat = self
+                    .alloc_pat_desugared_from_expr(Pat::Bind { id: binding, subpat: None }, ptr);
                 self.add_definition_to_binding(binding, pat);
                 let tail_expr =
                     self.alloc_expr_desugared_with_ptr(Expr::Path(Path::from(name)), ptr);
@@ -2455,7 +2456,7 @@ impl<'db> ExprCollector<'db> {
             syntax_ptr_iterable,
         );
         let none_arm = MatchArm {
-            pat: self.alloc_pat_desugared(Pat::Path(option_none)),
+            pat: self.alloc_pat_desugared_from_expr(Pat::Path(option_none), syntax_ptr),
             guard: None,
             expr: self
                 .alloc_expr_desugared_with_ptr(Expr::Break { expr: None, label: None }, syntax_ptr),
@@ -2469,7 +2470,7 @@ impl<'db> ExprCollector<'db> {
             (self.hygiene_id_for(label.syntax().text_range()), self.collect_label(label))
         });
         let some_arm = MatchArm {
-            pat: self.alloc_pat_desugared(some_pat),
+            pat: self.alloc_pat_desugared_from_expr(some_pat, syntax_ptr),
             guard: None,
             expr: self.with_opt_labeled_rib(label, |this| this.collect_expr_opt(loop_body)),
         };
@@ -2510,7 +2511,10 @@ impl<'db> ExprCollector<'db> {
         );
         let iter_binding =
             self.alloc_binding(iter_name, BindingAnnotation::Mutable, HygieneId::ROOT);
-        let iter_pat = self.alloc_pat_desugared(Pat::Bind { id: iter_binding, subpat: None });
+        let iter_pat = self.alloc_pat_desugared_from_expr(
+            Pat::Bind { id: iter_binding, subpat: None },
+            syntax_ptr,
+        );
         self.add_definition_to_binding(iter_binding, iter_pat);
         self.alloc_expr(
             Expr::Match {
@@ -2553,29 +2557,36 @@ impl<'db> ExprCollector<'db> {
             BindingAnnotation::Unannotated,
             HygieneId::ROOT,
         );
-        let continue_bpat =
-            self.alloc_pat_desugared(Pat::Bind { id: continue_binding, subpat: None });
+        let continue_bpat = self.alloc_pat_desugared_from_expr(
+            Pat::Bind { id: continue_binding, subpat: None },
+            syntax_ptr,
+        );
         self.add_definition_to_binding(continue_binding, continue_bpat);
         let continue_arm = MatchArm {
-            pat: self.alloc_pat_desugared(Pat::TupleStruct {
-                path: cf_continue,
-                args: Box::new([continue_bpat]),
-                ellipsis: None,
-            }),
+            pat: self.alloc_pat_desugared_from_expr(
+                Pat::TupleStruct {
+                    path: cf_continue,
+                    args: Box::new([continue_bpat]),
+                    ellipsis: None,
+                },
+                syntax_ptr,
+            ),
             guard: None,
             expr: self.alloc_expr(Expr::Path(Path::from(continue_name)), syntax_ptr),
         };
         let break_name = self.generate_new_name();
         let break_binding =
             self.alloc_binding(break_name.clone(), BindingAnnotation::Unannotated, HygieneId::ROOT);
-        let break_bpat = self.alloc_pat_desugared(Pat::Bind { id: break_binding, subpat: None });
+        let break_bpat = self.alloc_pat_desugared_from_expr(
+            Pat::Bind { id: break_binding, subpat: None },
+            syntax_ptr,
+        );
         self.add_definition_to_binding(break_binding, break_bpat);
         let break_arm = MatchArm {
-            pat: self.alloc_pat_desugared(Pat::TupleStruct {
-                path: cf_break,
-                args: Box::new([break_bpat]),
-                ellipsis: None,
-            }),
+            pat: self.alloc_pat_desugared_from_expr(
+                Pat::TupleStruct { path: cf_break, args: Box::new([break_bpat]), ellipsis: None },
+                syntax_ptr,
+            ),
             guard: None,
             expr: {
                 let it = self.alloc_expr(Expr::Path(Path::from(break_name)), syntax_ptr);
@@ -3626,9 +3637,27 @@ impl<'db> ExprCollector<'db> {
         self.store.pat_map.insert(src, id.into());
         id
     }
-    // FIXME: desugared pats don't have ptr, that's wrong and should be fixed somehow.
+    // FIXME: desugared pats don't have ptr, that's wrong and should be fixed.
+    // Migrate to alloc_pat_desugared_with_ptr and then rename back
     fn alloc_pat_desugared(&mut self, pat: Pat) -> PatId {
         self.store.pats.alloc(pat)
+    }
+    #[expect(unused)]
+    fn alloc_pat_desugared_with_ptr(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
+        let src = self.expander.in_file(ptr);
+        let id = self.store.pats.alloc(pat);
+        self.store.pat_map_back.insert(id, src.map(AstPtr::wrap_right));
+        // We intentionally don't fill this as it could overwrite a non-desugared entry
+        // self.store.pat_map.insert(src, id);
+        id
+    }
+    fn alloc_pat_desugared_from_expr(&mut self, pat: Pat, ptr: ExprPtr) -> PatId {
+        let src = self.expander.in_file(ptr);
+        let id = self.store.pats.alloc(pat);
+        self.store.pat_map_back.insert(id, src.map(AstPtr::wrap_left));
+        // We intentionally don't fill this as it could overwrite a non-desugared entry
+        // self.store.expr_map.insert(src, id);
+        id
     }
     fn missing_pat(&mut self) -> PatId {
         self.store.pats.alloc(Pat::Missing)
