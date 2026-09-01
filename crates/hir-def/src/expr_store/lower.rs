@@ -2315,8 +2315,11 @@ impl<'db> ExprCollector<'db> {
     ///   }
     /// }
     /// ```
-    /// FIXME: Rustc wraps the condition in a construct equivalent to `{ let _t = <cond>; _t }`
-    /// to preserve drop semantics. We should probably do the same in future.
+    /// FIXME: Rustc wraps the condition in [`DropTemps`] -- a construct equivalent to
+    /// `{ let _t = <cond>; _t }` -- to preserve drop semantics.
+    /// We should probably do the same in future.
+    ///
+    /// [`DropTemps`]: rustc_hir::hir::ExprKind::DropTemps
     fn collect_while_loop(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::WhileExpr) -> ExprId {
         let label = e.label().map(|label| {
             (self.hygiene_id_for(label.syntax().text_range()), self.collect_label(label))
