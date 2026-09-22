@@ -42,10 +42,10 @@ fn as_name_opt(name: Option<ast::Name>) -> Name {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct StructSignature {
+pub struct StructSignature<'db> {
     pub name: Name,
-    pub generic_params: GenericParams,
-    pub store: ExpressionStore,
+    pub generic_params: GenericParams<'db>,
+    pub store: ExpressionStore<'db>,
     pub flags: StructFlags,
     pub shape: FieldsShape,
 }
@@ -75,7 +75,7 @@ bitflags! {
 }
 
 #[salsa::tracked]
-impl StructSignature {
+impl<'db> StructSignature<'db> {
     #[salsa::tracked(returns(deref))]
     pub fn of(db: &dyn SourceDatabase, id: StructId) -> Arc<Self> {
         Self::with_source_map(db, id).0.clone()
@@ -85,7 +85,7 @@ impl StructSignature {
     pub fn with_source_map(
         db: &dyn SourceDatabase,
         id: StructId,
-    ) -> (Arc<Self>, ExpressionStoreSourceMap) {
+    ) -> (Arc<Self>, ExpressionStoreSourceMap<'_>) {
         let loc = id.lookup(db);
         let InFile { file_id, value: source } = loc.source(db);
         let attrs = AttrFlags::query(db, id.into());
@@ -156,15 +156,15 @@ fn adt_shape(adt_kind: ast::StructKind) -> FieldsShape {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct UnionSignature {
+pub struct UnionSignature<'db> {
     pub name: Name,
-    pub generic_params: GenericParams,
-    pub store: ExpressionStore,
+    pub generic_params: GenericParams<'db>,
+    pub store: ExpressionStore<'db>,
     pub flags: StructFlags,
 }
 
 #[salsa::tracked]
-impl UnionSignature {
+impl<'db> UnionSignature<'db> {
     #[salsa::tracked(returns(deref))]
     pub fn of(db: &dyn SourceDatabase, id: UnionId) -> Arc<Self> {
         Self::with_source_map(db, id).0.clone()
@@ -174,7 +174,7 @@ impl UnionSignature {
     pub fn with_source_map(
         db: &dyn SourceDatabase,
         id: UnionId,
-    ) -> (Arc<Self>, ExpressionStoreSourceMap) {
+    ) -> (Arc<Self>, ExpressionStoreSourceMap<'_>) {
         let loc = id.lookup(db);
         let attrs = AttrFlags::query(db, id.into());
         let mut flags = StructFlags::empty();
@@ -232,15 +232,15 @@ bitflags! {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct EnumSignature {
+pub struct EnumSignature<'db> {
     pub name: Name,
-    pub generic_params: GenericParams,
-    pub store: ExpressionStore,
+    pub generic_params: GenericParams<'db>,
+    pub store: ExpressionStore<'db>,
     pub flags: EnumFlags,
 }
 
 #[salsa::tracked]
-impl EnumSignature {
+impl<'db> EnumSignature<'db> {
     #[salsa::tracked(returns(deref))]
     pub fn of(db: &dyn SourceDatabase, id: EnumId) -> Arc<Self> {
         Self::with_source_map(db, id).0.clone()
@@ -250,7 +250,7 @@ impl EnumSignature {
     pub fn with_source_map(
         db: &dyn SourceDatabase,
         id: EnumId,
-    ) -> (Arc<Self>, ExpressionStoreSourceMap) {
+    ) -> (Arc<Self>, ExpressionStoreSourceMap<'db>) {
         let loc = id.lookup(db);
         let attrs = AttrFlags::query(db, id.into());
         let mut flags = EnumFlags::empty();
@@ -287,7 +287,7 @@ impl EnumSignature {
     }
 }
 
-impl EnumSignature {
+impl<'db> EnumSignature<'db> {
     pub fn variant_body_type(db: &dyn SourceDatabase, id: EnumId) -> IntegerType {
         match AttrFlags::repr(db, id.into()) {
             Some(ReprOptions { int: Some(builtin), .. }) => builtin,
@@ -313,16 +313,16 @@ bitflags::bitflags! {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct ConstSignature {
+pub struct ConstSignature<'db> {
     pub name: Option<Name>,
     // generic_params: GenericParams,
-    pub store: ExpressionStore,
-    pub type_ref: TypeRefId,
+    pub store: ExpressionStore<'db>,
+    pub type_ref: TypeRefId<'db>,
     pub flags: ConstFlags,
 }
 
 #[salsa::tracked]
-impl ConstSignature {
+impl<'db> ConstSignature<'db> {
     #[salsa::tracked(returns(deref))]
     pub fn of(db: &dyn SourceDatabase, id: ConstId) -> Arc<Self> {
         Self::with_source_map(db, id).0.clone()
@@ -332,7 +332,7 @@ impl ConstSignature {
     pub fn with_source_map(
         db: &dyn SourceDatabase,
         id: ConstId,
-    ) -> (Arc<Self>, ExpressionStoreSourceMap) {
+    ) -> (Arc<Self>, ExpressionStoreSourceMap<'db>) {
         let loc = id.lookup(db);
 
         let module = loc.container.module(db);
@@ -361,7 +361,7 @@ impl ConstSignature {
     }
 }
 
-impl ConstSignature {
+impl<'db> ConstSignature<'db> {
     pub fn has_body(&self) -> bool {
         self.flags.contains(ConstFlags::HAS_BODY)
     }
@@ -380,17 +380,17 @@ bitflags::bitflags! {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct StaticSignature {
+pub struct StaticSignature<'db> {
     pub name: Name,
 
     // generic_params: GenericParams,
-    pub store: ExpressionStore,
-    pub type_ref: TypeRefId,
+    pub store: ExpressionStore<'db>,
+    pub type_ref: TypeRefId<'db>,
     pub flags: StaticFlags,
 }
 
 #[salsa::tracked]
-impl StaticSignature {
+impl<'db> StaticSignature<'db> {
     #[salsa::tracked(returns(deref))]
     pub fn of(db: &dyn SourceDatabase, id: StaticId) -> Arc<Self> {
         Self::with_source_map(db, id).0.clone()
@@ -400,7 +400,7 @@ impl StaticSignature {
     pub fn with_source_map(
         db: &dyn SourceDatabase,
         id: StaticId,
-    ) -> (Arc<Self>, ExpressionStoreSourceMap) {
+    ) -> (Arc<Self>, ExpressionStoreSourceMap<'db>) {
         let loc = id.lookup(db);
 
         let module = loc.container.module(db);
@@ -453,16 +453,16 @@ bitflags::bitflags! {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct ImplSignature {
-    pub generic_params: GenericParams,
-    pub store: ExpressionStore,
-    pub self_ty: TypeRefId,
-    pub target_trait: Option<TraitRef>,
+pub struct ImplSignature<'db> {
+    pub generic_params: GenericParams<'db>,
+    pub store: ExpressionStore<'db>,
+    pub self_ty: TypeRefId<'db>,
+    pub target_trait: Option<TraitRef<'db>>,
     pub flags: ImplFlags,
 }
 
 #[salsa::tracked]
-impl ImplSignature {
+impl<'db> ImplSignature<'db> {
     #[salsa::tracked(returns(deref))]
     pub fn of(db: &dyn SourceDatabase, id: ImplId) -> Arc<Self> {
         Self::with_source_map(db, id).0.clone()
@@ -472,7 +472,7 @@ impl ImplSignature {
     pub fn with_source_map(
         db: &dyn SourceDatabase,
         id: ImplId,
-    ) -> (Arc<Self>, ExpressionStoreSourceMap) {
+    ) -> (Arc<Self>, ExpressionStoreSourceMap<'db>) {
         let loc = id.lookup(db);
 
         let mut flags = ImplFlags::empty();
@@ -497,7 +497,7 @@ impl ImplSignature {
     }
 }
 
-impl ImplSignature {
+impl<'db> ImplSignature<'db> {
     #[inline]
     pub fn is_negative(&self) -> bool {
         self.flags.contains(ImplFlags::NEGATIVE)
@@ -525,15 +525,15 @@ bitflags::bitflags! {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TraitSignature {
+pub struct TraitSignature<'db> {
     pub name: Name,
-    pub generic_params: GenericParams,
-    pub store: ExpressionStore,
+    pub generic_params: GenericParams<'db>,
+    pub store: ExpressionStore<'db>,
     pub flags: TraitFlags,
 }
 
 #[salsa::tracked]
-impl TraitSignature {
+impl<'db> TraitSignature<'db> {
     #[salsa::tracked(returns(deref))]
     pub fn of(db: &dyn SourceDatabase, id: TraitId) -> Arc<Self> {
         Self::with_source_map(db, id).0.clone()
@@ -543,7 +543,7 @@ impl TraitSignature {
     pub fn with_source_map(
         db: &dyn SourceDatabase,
         id: TraitId,
-    ) -> (Arc<Self>, ExpressionStoreSourceMap) {
+    ) -> (Arc<Self>, ExpressionStoreSourceMap<'db>) {
         let loc = id.lookup(db);
 
         let mut flags = TraitFlags::empty();
@@ -610,18 +610,18 @@ bitflags! {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct FunctionSignature {
+pub struct FunctionSignature<'db> {
     pub name: Name,
-    pub generic_params: GenericParams,
-    pub store: ExpressionStore,
-    pub params: Box<[TypeRefId]>,
-    pub ret_type: Option<TypeRefId>,
+    pub generic_params: GenericParams<'db>,
+    pub store: ExpressionStore<'db>,
+    pub params: Box<[TypeRefId<'db>]>,
+    pub ret_type: Option<TypeRefId<'db>>,
     pub abi: ExternAbi,
     pub flags: FnFlags,
 }
 
 #[salsa::tracked]
-impl FunctionSignature {
+impl<'db> FunctionSignature<'db> {
     #[salsa::tracked(returns(deref))]
     pub fn of(db: &dyn SourceDatabase, id: FunctionId) -> Arc<Self> {
         Self::with_source_map(db, id).0.clone()
@@ -631,7 +631,7 @@ impl FunctionSignature {
     pub fn with_source_map(
         db: &dyn SourceDatabase,
         id: FunctionId,
-    ) -> (Arc<Self>, ExpressionStoreSourceMap) {
+    ) -> (Arc<Self>, ExpressionStoreSourceMap<'db>) {
         let loc = id.lookup(db);
         let module = loc.container.module(db);
 
@@ -721,7 +721,7 @@ impl FunctionSignature {
     }
 }
 
-impl FunctionSignature {
+impl<'db> FunctionSignature<'db> {
     pub fn has_body(&self) -> bool {
         self.flags.contains(FnFlags::HAS_BODY)
     }
@@ -769,7 +769,7 @@ impl FunctionSignature {
     }
 
     #[inline]
-    pub fn legacy_const_generics_indices<'db>(
+    pub fn legacy_const_generics_indices(
         &self,
         db: &'db dyn SourceDatabase,
         id: FunctionId,
@@ -797,17 +797,17 @@ bitflags! {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TypeAliasSignature {
+pub struct TypeAliasSignature<'db> {
     pub name: Name,
-    pub generic_params: GenericParams,
-    pub store: ExpressionStore,
-    pub bounds: Box<[TypeBound]>,
-    pub ty: Option<TypeRefId>,
+    pub generic_params: GenericParams<'db>,
+    pub store: ExpressionStore<'db>,
+    pub bounds: Box<[TypeBound<'db>]>,
+    pub ty: Option<TypeRefId<'db>>,
     pub flags: TypeAliasFlags,
 }
 
 #[salsa::tracked]
-impl TypeAliasSignature {
+impl<'db> TypeAliasSignature<'db> {
     #[salsa::tracked(returns(deref))]
     pub fn of(db: &dyn SourceDatabase, id: TypeAliasId) -> Arc<Self> {
         Self::with_source_map(db, id).0.clone()
@@ -817,7 +817,7 @@ impl TypeAliasSignature {
     pub fn with_source_map(
         db: &dyn SourceDatabase,
         id: TypeAliasId,
-    ) -> (Arc<Self>, ExpressionStoreSourceMap) {
+    ) -> (Arc<Self>, ExpressionStoreSourceMap<'db>) {
         let loc = id.lookup(db);
 
         let mut flags = TypeAliasFlags::empty();
@@ -844,43 +844,43 @@ impl TypeAliasSignature {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct FunctionBody {
-    pub store: ExpressionStore,
-    pub parameters: Box<[PatId]>,
+pub struct FunctionBody<'db> {
+    pub store: ExpressionStore<'db>,
+    pub parameters: Box<[PatId<'db>]>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct VariantFieldsBody {
-    pub store: ExpressionStore,
-    pub fields: Box<[Option<ExprId>]>,
+pub struct VariantFieldsBody<'db> {
+    pub store: ExpressionStore<'db>,
+    pub fields: Box<[Option<ExprId<'db>>]>,
 }
 
 /// A single field of an enum variant or struct
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FieldData {
+pub struct FieldData<'db> {
     pub name: Name,
-    pub type_ref: TypeRefId,
+    pub type_ref: TypeRefId<'db>,
     pub visibility: RawVisibility,
     pub is_unsafe: bool,
-    pub default_value: Option<ConstRef>,
+    pub default_value: Option<ConstRef<'db>>,
 }
 
-pub type LocalFieldId = Idx<FieldData>;
+pub type LocalFieldId<'db> = Idx<FieldData<'db>>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct VariantFields {
-    fields: Arena<FieldData>,
-    pub store: ExpressionStore,
+pub struct VariantFields<'db> {
+    fields: Arena<FieldData<'db>>,
+    pub store: ExpressionStore<'db>,
     pub shape: FieldsShape,
 }
 
 #[salsa::tracked]
-impl VariantFields {
+impl<'db> VariantFields<'db> {
     #[salsa::tracked(returns(ref))]
     pub fn with_source_map(
         db: &dyn SourceDatabase,
         id: VariantId,
-    ) -> (Arc<Self>, ExpressionStoreSourceMap) {
+    ) -> (Arc<Self>, ExpressionStoreSourceMap<'_>) {
         let (shape, result) = match id {
             VariantId::EnumVariantId(id) => {
                 let loc = id.lookup(db);
@@ -940,26 +940,26 @@ impl VariantFields {
     }
 }
 
-impl VariantFields {
+impl<'db> VariantFields<'db> {
     pub fn len(&self) -> usize {
         self.fields.len()
     }
 
-    pub fn fields(&self) -> &Arena<FieldData> {
+    pub fn fields(&self) -> &Arena<FieldData<'db>> {
         &self.fields
     }
 
-    pub fn field(&self, name: &Name) -> Option<LocalFieldId> {
+    pub fn field(&self, name: &Name) -> Option<LocalFieldId<'db>> {
         self.fields().iter().find_map(|(id, data)| if &data.name == name { Some(id) } else { None })
     }
 }
 
-fn lower_field_list(
-    db: &dyn SourceDatabase,
+fn lower_field_list<'db>(
+    db: &'db dyn SourceDatabase,
     module: ModuleId,
     fields: InFile<Option<ast::FieldList>>,
     override_visibility: Option<Option<ast::Visibility>>,
-) -> Option<(Arena<FieldData>, ExpressionStore, ExpressionStoreSourceMap)> {
+) -> Option<(Arena<FieldData<'db>>, ExpressionStore<'db>, ExpressionStoreSourceMap<'db>)> {
     let file_id = fields.file_id;
     match fields.value? {
         ast::FieldList::RecordFieldList(fields) => lower_fields(
@@ -979,13 +979,13 @@ fn lower_field_list(
     }
 }
 
-fn lower_fields<Field: ast::HasAttrs + ast::HasVisibility>(
-    db: &dyn SourceDatabase,
+fn lower_fields<'db, Field: ast::HasAttrs + ast::HasVisibility>(
+    db: &'db dyn SourceDatabase,
     module: ModuleId,
     fields: InFile<impl Iterator<Item = (Option<ast::Type>, Field)>>,
     mut field_name: impl FnMut(usize, &Field) -> Name,
     override_visibility: Option<Option<ast::Visibility>>,
-) -> Option<(Arena<FieldData>, ExpressionStore, ExpressionStoreSourceMap)> {
+) -> Option<(Arena<FieldData<'db>>, ExpressionStore<'db>, ExpressionStoreSourceMap<'db>)> {
     let cfg_options = module.krate(db).cfg_options(db);
     let mut col = ExprCollector::new(db, module, fields.file_id, crate::LoweringMode::Analysis);
     let override_visibility = override_visibility.map(|vis| {

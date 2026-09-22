@@ -17,15 +17,15 @@ use crate::{
     type_ref::{ConstRef, LifetimeRefId, TypeBound, TypeRefId},
 };
 
-pub type LocalTypeOrConstParamId = Idx<TypeOrConstParamData>;
+pub type LocalTypeOrConstParamId<'db> = Idx<TypeOrConstParamData<'db>>;
 pub type LocalLifetimeParamId = Idx<LifetimeParamData>;
 
 /// Data about a generic type parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct TypeParamData {
+pub struct TypeParamData<'db> {
     /// [`None`] only if the type ref is an [`crate::type_ref::TypeRef::ImplTrait`].
     pub name: Option<Name>,
-    pub default: Option<TypeRefId>,
+    pub default: Option<TypeRefId<'db>>,
     pub provenance: TypeParamProvenance,
 }
 
@@ -56,10 +56,10 @@ impl LifetimeParamData {
 
 /// Data about a generic const parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct ConstParamData {
+pub struct ConstParamData<'db> {
     pub name: Name,
-    pub ty: TypeRefId,
-    pub default: Option<ConstRef>,
+    pub ty: TypeRefId<'db>,
+    pub default: Option<ConstRef<'db>>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -70,12 +70,12 @@ pub enum TypeParamProvenance {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum TypeOrConstParamData {
-    TypeParamData(TypeParamData),
-    ConstParamData(ConstParamData),
+pub enum TypeOrConstParamData<'db> {
+    TypeParamData(TypeParamData<'db>),
+    ConstParamData(ConstParamData<'db>),
 }
 
-impl TypeOrConstParamData {
+impl<'db> TypeOrConstParamData<'db> {
     pub fn name(&self) -> Option<&Name> {
         match self {
             TypeOrConstParamData::TypeParamData(it) => it.name.as_ref(),
@@ -90,14 +90,14 @@ impl TypeOrConstParamData {
         }
     }
 
-    pub fn type_param(&self) -> Option<&TypeParamData> {
+    pub fn type_param(&self) -> Option<&TypeParamData<'db>> {
         match self {
             TypeOrConstParamData::TypeParamData(it) => Some(it),
             TypeOrConstParamData::ConstParamData(_) => None,
         }
     }
 
-    pub fn const_param(&self) -> Option<&ConstParamData> {
+    pub fn const_param(&self) -> Option<&ConstParamData<'db>> {
         match self {
             TypeOrConstParamData::TypeParamData(_) => None,
             TypeOrConstParamData::ConstParamData(it) => Some(it),
@@ -114,16 +114,16 @@ impl TypeOrConstParamData {
     }
 }
 
-impl_from!(TypeParamData, ConstParamData for TypeOrConstParamData);
+impl_from!(impl<'db> TypeParamData<'db>, ConstParamData<'db> for TypeOrConstParamData<'db>);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum GenericParamData {
-    TypeParamData(TypeParamData),
-    ConstParamData(ConstParamData),
+pub enum GenericParamData<'db> {
+    TypeParamData(TypeParamData<'db>),
+    ConstParamData(ConstParamData<'db>),
     LifetimeParamData(LifetimeParamData),
 }
 
-impl GenericParamData {
+impl<'db> GenericParamData<'db> {
     pub fn name(&self) -> Option<&Name> {
         match self {
             GenericParamData::TypeParamData(it) => it.name.as_ref(),
@@ -132,14 +132,14 @@ impl GenericParamData {
         }
     }
 
-    pub fn type_param(&self) -> Option<&TypeParamData> {
+    pub fn type_param(&self) -> Option<&TypeParamData<'db>> {
         match self {
             GenericParamData::TypeParamData(it) => Some(it),
             _ => None,
         }
     }
 
-    pub fn const_param(&self) -> Option<&ConstParamData> {
+    pub fn const_param(&self) -> Option<&ConstParamData<'db>> {
         match self {
             GenericParamData::ConstParamData(it) => Some(it),
             _ => None,
@@ -154,32 +154,32 @@ impl GenericParamData {
     }
 }
 
-impl_from!(TypeParamData, ConstParamData, LifetimeParamData for GenericParamData);
+impl_from!(impl<'db> TypeParamData<'db>, ConstParamData<'db>, LifetimeParamData for GenericParamData<'db>);
 
 #[derive(Debug, Clone, Copy)]
-pub enum GenericParamDataRef<'a> {
-    TypeParamData(&'a TypeParamData),
-    ConstParamData(&'a ConstParamData),
+pub enum GenericParamDataRef<'a, 'db> {
+    TypeParamData(&'a TypeParamData<'db>),
+    ConstParamData(&'a ConstParamData<'db>),
     LifetimeParamData(&'a LifetimeParamData),
 }
 
 /// Data about the generic parameters of a function, struct, impl, etc.
 #[derive(PartialEq, Eq, Debug, Hash, Default)]
-pub struct GenericParams {
-    pub(crate) type_or_consts: Arena<TypeOrConstParamData>,
+pub struct GenericParams<'db> {
+    pub(crate) type_or_consts: Arena<TypeOrConstParamData<'db>>,
     pub(crate) lifetimes: Arena<LifetimeParamData>,
-    pub(crate) where_predicates: Box<[WherePredicate]>,
+    pub(crate) where_predicates: Box<[WherePredicate<'db>]>,
     pub(crate) early_bound_lifetimes_len: usize,
 }
 
-impl ops::Index<LocalTypeOrConstParamId> for GenericParams {
-    type Output = TypeOrConstParamData;
-    fn index(&self, index: LocalTypeOrConstParamId) -> &TypeOrConstParamData {
+impl<'db> ops::Index<LocalTypeOrConstParamId<'db>> for GenericParams<'db> {
+    type Output = TypeOrConstParamData<'db>;
+    fn index(&self, index: LocalTypeOrConstParamId<'db>) -> &TypeOrConstParamData<'db> {
         &self.type_or_consts[index]
     }
 }
 
-impl ops::Index<LocalLifetimeParamId> for GenericParams {
+impl<'db> ops::Index<LocalLifetimeParamId> for GenericParams<'db> {
     type Output = LifetimeParamData;
     fn index(&self, index: LocalLifetimeParamId) -> &LifetimeParamData {
         &self.lifetimes[index]
@@ -191,36 +191,36 @@ impl ops::Index<LocalLifetimeParamId> for GenericParams {
 /// It might still result in multiple actual predicates though, because of
 /// associated type bindings like `Iterator<Item = u32>`.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum WherePredicate {
-    TypeBound { lifetimes: Option<ThinVec<Name>>, target: TypeRefId, bound: TypeBound },
+pub enum WherePredicate<'db> {
+    TypeBound { lifetimes: Option<ThinVec<Name>>, target: TypeRefId<'db>, bound: TypeBound<'db> },
     Lifetime { target: LifetimeRefId, bound: LifetimeRefId },
 }
 
-static EMPTY: LazyLock<GenericParams> = LazyLock::new(|| GenericParams {
+static EMPTY: LazyLock<GenericParams<'static>> = LazyLock::new(|| GenericParams {
     type_or_consts: Arena::default(),
     lifetimes: Arena::default(),
     where_predicates: Box::default(),
     early_bound_lifetimes_len: 0,
 });
 
-impl GenericParams {
+impl<'db> GenericParams<'db> {
     /// The index of the self param in the generic of the non-parent definition.
-    pub const SELF_PARAM_ID_IN_SELF: la_arena::Idx<TypeOrConstParamData> =
+    pub const SELF_PARAM_ID_IN_SELF: la_arena::Idx<TypeOrConstParamData<'db>> =
         LocalTypeOrConstParamId::from_raw(RawIdx::from_u32(0));
 
     #[inline]
-    pub fn empty() -> &'static GenericParams {
+    pub fn empty() -> &'static GenericParams<'db> {
         LazyLock::force(&EMPTY)
     }
 
-    pub fn of(db: &dyn SourceDatabase, def: GenericDefId) -> &GenericParams {
+    pub fn of(db: &'db dyn SourceDatabase, def: GenericDefId) -> &GenericParams<'db> {
         Self::with_store(db, def).0
     }
 
     pub fn with_store(
-        db: &dyn SourceDatabase,
+        db: &'db dyn SourceDatabase,
         def: GenericDefId,
-    ) -> (&GenericParams, &ExpressionStore) {
+    ) -> (&GenericParams<'db>, &ExpressionStore<'db>) {
         match def {
             GenericDefId::AdtId(AdtId::EnumId(id)) => {
                 let sig = EnumSignature::of(db, id);
@@ -262,9 +262,9 @@ impl GenericParams {
     }
 
     pub fn with_source_map(
-        db: &dyn SourceDatabase,
+        db: &'db dyn SourceDatabase,
         def: GenericDefId,
-    ) -> (&GenericParams, &ExpressionStore, &ExpressionStoreSourceMap) {
+    ) -> (&GenericParams<'db>, &ExpressionStore<'db>, &ExpressionStoreSourceMap<'db>) {
         match def {
             GenericDefId::AdtId(AdtId::EnumId(id)) => {
                 let (sig, sm) = EnumSignature::with_source_map(db, id);
@@ -347,7 +347,7 @@ impl GenericParams {
     }
 
     #[inline]
-    pub fn where_predicates(&self) -> &[WherePredicate] {
+    pub fn where_predicates(&self) -> &[WherePredicate<'db>] {
         &self.where_predicates
     }
 
@@ -355,7 +355,8 @@ impl GenericParams {
     #[inline]
     pub fn iter_type_or_consts(
         &self,
-    ) -> impl DoubleEndedIterator<Item = (LocalTypeOrConstParamId, &TypeOrConstParamData)> {
+    ) -> impl DoubleEndedIterator<Item = (LocalTypeOrConstParamId<'db>, &TypeOrConstParamData<'db>)>
+    {
         self.type_or_consts.iter()
     }
 
@@ -381,7 +382,7 @@ impl GenericParams {
         self.lifetimes.iter().filter(|(_, p)| p.bound_type == LifetimeBoundType::LateBound)
     }
 
-    pub fn find_type_by_name(&self, name: &Name, parent: GenericDefId) -> Option<TypeParamId> {
+    pub fn find_type_by_name(&self, name: &Name, parent: GenericDefId) -> Option<TypeParamId<'db>> {
         self.type_or_consts.iter().find_map(|(id, p)| {
             if p.name().as_ref() == Some(&name) && p.type_param().is_some() {
                 Some(TypeParamId::from_unchecked(TypeOrConstParamId { local_id: id, parent }))
@@ -391,7 +392,11 @@ impl GenericParams {
         })
     }
 
-    pub fn find_const_by_name(&self, name: &Name, parent: GenericDefId) -> Option<ConstParamId> {
+    pub fn find_const_by_name(
+        &self,
+        name: &Name,
+        parent: GenericDefId,
+    ) -> Option<ConstParamId<'db>> {
         self.type_or_consts.iter().find_map(|(id, p)| {
             if p.name().as_ref() == Some(&name) && p.const_param().is_some() {
                 Some(ConstParamId::from_unchecked(TypeOrConstParamId { local_id: id, parent }))
@@ -402,7 +407,7 @@ impl GenericParams {
     }
 
     #[inline]
-    pub fn trait_self_param(&self) -> Option<LocalTypeOrConstParamId> {
+    pub fn trait_self_param(&self) -> Option<LocalTypeOrConstParamId<'db>> {
         if self.type_or_consts.is_empty() {
             return None;
         }

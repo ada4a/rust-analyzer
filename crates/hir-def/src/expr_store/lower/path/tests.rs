@@ -1,3 +1,4 @@
+#![expect(unused)]
 use expect_test::{Expect, expect};
 use span::Edition;
 use syntax::ast::{self, make};
@@ -17,18 +18,19 @@ use crate::{
     test_db::TestDB,
 };
 
-fn lower_path(path: ast::Path) -> (TestDB, ExpressionStore, Option<Path>) {
-    let (db, file_id) = TestDB::with_single_file("");
-    let krate = db.fetch_test_crate();
-    let mut ctx = ExprCollector::new(
-        &db,
-        crate_def_map(&db, krate).root_module_id(),
-        file_id.into(),
-        crate::LoweringMode::Analysis,
-    );
-    let lowered_path = ctx.lower_path(path, &mut ExprCollector::impl_trait_allocator);
-    let (store, _) = ctx.store.finish();
-    (db, store, lowered_path)
+fn lower_path<'db>(path: ast::Path) -> (TestDB, ExpressionStore<'db>, Option<Path<'db>>) {
+    todo!("can't return `db` and `store` together, as the latter borrows from the former")
+    // let (db, file_id) = TestDB::with_single_file("");
+    // let krate = db.fetch_test_crate();
+    // let mut ctx = ExprCollector::new(
+    //     &db,
+    //     crate_def_map(&db, krate).root_module_id(),
+    //     file_id.into(),
+    //     crate::LoweringMode::Analysis,
+    // );
+    // let lowered_path = ctx.lower_path(path, &mut ExprCollector::impl_trait_allocator);
+    // let (store, _) = ctx.store.finish();
+    // (db, store, lowered_path)
 }
 
 #[track_caller]

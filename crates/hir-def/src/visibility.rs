@@ -280,13 +280,13 @@ impl Visibility {
 }
 
 #[salsa::tracked]
-impl VariantFields {
+impl<'db> VariantFields<'db> {
     /// Resolve visibility of all specific fields of a struct or union variant.
     #[salsa::tracked(returns(ref))]
     pub fn field_visibilities(
         db: &dyn SourceDatabase,
         variant_id: VariantId,
-    ) -> ArenaMap<LocalFieldId, Visibility> {
+    ) -> ArenaMap<LocalFieldId<'_>, Visibility> {
         let variant_fields = variant_id.fields(db);
         let fields = variant_fields.fields();
         if fields.is_empty() {
