@@ -32,23 +32,23 @@ use crate::{
     mod_path::ModPath,
 };
 
-pub type EagerCallBackFn<'a> = &'a mut dyn FnMut(
-    InFile<(syntax::AstPtr<ast::MacroCall>, span::FileAstId<ast::MacroCall>)>,
-    MacroCallId,
+pub type EagerCallBackFn<'a, 'db> = &'a mut dyn FnMut(
+    InFile<'db, (syntax::AstPtr<ast::MacroCall>, span::FileAstId<ast::MacroCall>)>,
+    MacroCallId<'db>,
 );
 
-pub fn expand_eager_macro_input(
-    db: &dyn SourceDatabase,
+pub fn expand_eager_macro_input<'db>(
+    db: &'db dyn SourceDatabase,
     krate: Crate,
     macro_call: &ast::MacroCall,
-    ast_id: AstId<ast::MacroCall>,
-    def: MacroDefId,
+    ast_id: AstId<'db, ast::MacroCall>,
+    def: MacroDefId<'db>,
     call_site: SyntaxContext,
     macro_depth: u32,
     recursion_limit: u32,
-    resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
-    eager_callback: EagerCallBackFn<'_>,
-) -> ExpandResult<Option<MacroCallId>> {
+    resolver: &dyn Fn(&ModPath) -> Option<MacroDefId<'db>>,
+    eager_callback: EagerCallBackFn<'_, 'db>,
+) -> ExpandResult<Option<MacroCallId<'db>>> {
     let expand_to = ExpandTo::from_call_site(macro_call);
 
     // Note:
@@ -125,14 +125,14 @@ pub fn expand_eager_macro_input(
 
 fn lazy_expand<'db>(
     db: &'db dyn SourceDatabase,
-    def: &MacroDefId,
+    def: &MacroDefId<'db>,
     macro_call: &ast::MacroCall,
-    ast_id: AstId<ast::MacroCall>,
+    ast_id: AstId<'db, ast::MacroCall>,
     krate: Crate,
     call_site: SyntaxContext,
     macro_depth: u32,
-    eager_callback: EagerCallBackFn<'_>,
-) -> ExpandResult<(InFile<Parse<SyntaxNode>>, &'db ExpansionSpanMap)> {
+    eager_callback: EagerCallBackFn<'_, 'db>,
+) -> ExpandResult<(InFile<'db, Parse<SyntaxNode>>, &'db ExpansionSpanMap)> {
     let expand_to = ExpandTo::from_call_site(macro_call);
     let id = def.make_call(
         db,
@@ -148,18 +148,18 @@ fn lazy_expand<'db>(
         .map(|parse| (InFile::new(id.into(), parse.0.clone()), &parse.1))
 }
 
-fn eager_macro_recur(
-    db: &dyn SourceDatabase,
+fn eager_macro_recur<'db>(
+    db: &'db dyn SourceDatabase,
     span_map: &ExpansionSpanMap,
     expanded_map: &mut ExpansionSpanMap,
     mut offset: TextSize,
-    curr: InFile<SyntaxNode>,
+    curr: InFile<'db, SyntaxNode>,
     krate: Crate,
     call_site: SyntaxContext,
     macro_depth: u32,
     recursion_limit: u32,
-    macro_resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
-    eager_callback: EagerCallBackFn<'_>,
+    macro_resolver: &dyn Fn(&ModPath) -> Option<MacroDefId<'db>>,
+    eager_callback: EagerCallBackFn<'_, 'db>,
 ) -> ExpandResult<Option<(SyntaxNode, TextSize)>> {
     let (editor, _) = SyntaxEditor::new(curr.value.clone());
     let original = curr.value.clone();

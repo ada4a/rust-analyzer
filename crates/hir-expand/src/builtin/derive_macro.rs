@@ -55,7 +55,7 @@ impl BuiltinDeriveExpander {
     pub fn expand(
         &self,
         db: &dyn SourceDatabase,
-        id: MacroCallId,
+        id: MacroCallId<'_>,
         tt: &tt::TopSubtree,
         span: Span,
     ) -> ExpandResult<tt::TopSubtree> {

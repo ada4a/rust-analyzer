@@ -37,7 +37,7 @@ impl<Id: Copy> Param<Id> {
 }
 
 /// The body of an item (function, const etc.).
-#[derive(Debug, Eq, PartialEq, SalsaValue)]
+#[derive(Debug, Eq, PartialEq, salsa::SalsaValue)]
 pub struct Body<'db> {
     pub store: ExpressionStore<'db>,
     /// The patterns for the function's parameters. While the parameter types are
@@ -72,7 +72,7 @@ impl<'db> ops::Deref for Body<'db> {
 /// this properly for macros.
 #[derive(Default, Debug, Eq, PartialEq, SalsaValue)]
 pub struct BodySourceMap<'db> {
-    pub self_param: Option<InFile<SelfParamPtr>>,
+    pub self_param: Option<InFile<'db, SelfParamPtr>>,
     pub store: ExpressionStoreSourceMap<'db>,
 }
 
@@ -188,7 +188,7 @@ impl<'db> Body<'db> {
 }
 
 impl<'db> BodySourceMap<'db> {
-    pub fn self_param_syntax(&self) -> Option<InFile<SelfParamPtr>> {
+    pub fn self_param_syntax(&self) -> Option<InFile<'db, SelfParamPtr>> {
         self.self_param
     }
 }

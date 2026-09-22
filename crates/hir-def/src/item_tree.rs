@@ -121,7 +121,11 @@ fn lower_extra_crate_attrs<'a>(
 }
 
 /// Computes an [`ItemTree`] for the given file or macro expansion.
-pub fn file_item_tree(db: &dyn SourceDatabase, file_id: HirFileId, krate: Crate) -> &ItemTree {
+pub fn file_item_tree<'db>(
+    db: &'db dyn SourceDatabase,
+    file_id: HirFileId<'_>,
+    krate: Crate,
+) -> &'db ItemTree {
     match file_item_tree_query(db, file_id, krate) {
         Some(item_tree) => item_tree,
         None => {
@@ -140,7 +144,7 @@ pub fn file_item_tree(db: &dyn SourceDatabase, file_id: HirFileId, krate: Crate)
 #[salsa::tracked(returns(ref))]
 fn file_item_tree_query(
     db: &dyn SourceDatabase,
-    file_id: HirFileId,
+    file_id: HirFileId<'_>,
     krate: Crate,
 ) -> Option<Box<ItemTree>> {
     let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
@@ -338,21 +342,17 @@ pub(crate) type ItemTreeAstId<T: ItemTreeNode> = FileAstId<T::Source>;
 
 /// Identifies a particular [`ItemTree`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub struct TreeId {
-    file: HirFileId,
+pub struct TreeId<'db> {
+    file: HirFileId<'db>,
     block: Option<BlockId>,
 }
 
-impl TreeId {
-    pub(crate) fn new(file: HirFileId, block: Option<BlockId>) -> Self {
+impl<'db> TreeId<'db> {
+    pub(crate) fn new(file: HirFileId<'db>, block: Option<BlockId>) -> Self {
         Self { file, block }
     }
 
-    pub(crate) fn item_tree<'db>(
-        &self,
-        db: &'db dyn SourceDatabase,
-        krate: Crate,
-    ) -> &'db ItemTree {
+    pub(crate) fn item_tree(&self, db: &'db dyn SourceDatabase, krate: Crate) -> &'db ItemTree {
         match self.block {
             Some(block) => block_item_tree_query(db, block, krate),
             None => file_item_tree(db, self.file, krate),
@@ -360,7 +360,7 @@ impl TreeId {
     }
 
     #[inline]
-    pub fn file_id(self) -> HirFileId {
+    pub fn file_id(self) -> HirFileId<'db> {
         self.file
     }
 

@@ -120,73 +120,73 @@ pub fn set_expand_proc_attr_macros(db: &mut dyn SourceDatabase, enabled: bool) {
     }
 }
 
-#[derive(Debug)]
-pub struct ItemLoc<N: AstIdNode> {
+#[derive(Debug, salsa::SalsaValue)]
+pub struct ItemLoc<'db, N: AstIdNode> {
     pub container: ModuleId,
-    pub id: AstId<N>,
+    pub id: AstId<'db, N>,
 }
 
-impl<N: AstIdNode> Clone for ItemLoc<N> {
+impl<N: AstIdNode> Clone for ItemLoc<'_, N> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<N: AstIdNode> Copy for ItemLoc<N> {}
+impl<N: AstIdNode> Copy for ItemLoc<'_, N> {}
 
-impl<N: AstIdNode> PartialEq for ItemLoc<N> {
+impl<N: AstIdNode> PartialEq for ItemLoc<'_, N> {
     fn eq(&self, other: &Self) -> bool {
         self.container == other.container && self.id == other.id
     }
 }
 
-impl<N: AstIdNode> Eq for ItemLoc<N> {}
+impl<N: AstIdNode> Eq for ItemLoc<'_, N> {}
 
-impl<N: AstIdNode> Hash for ItemLoc<N> {
+impl<N: AstIdNode> Hash for ItemLoc<'_, N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.container.hash(state);
         self.id.hash(state);
     }
 }
 
-impl<'db, N: AstIdNode> HasModule<'db> for ItemLoc<N> {
+impl<'db, N: AstIdNode> HasModule<'db> for ItemLoc<'_, N> {
     #[inline]
     fn module(&self, _db: &dyn SourceDatabase) -> ModuleId {
         self.container
     }
 }
 
-#[derive(Debug)]
-pub struct AssocItemLoc<N: AstIdNode> {
+#[derive(Debug, salsa::SalsaValue)]
+pub struct AssocItemLoc<'db, N: AstIdNode> {
     // FIXME: Store this as an erased `salsa::Id` to save space
     pub container: ItemContainerId,
-    pub id: AstId<N>,
+    pub id: AstId<'db, N>,
 }
 
-impl<N: AstIdNode> Clone for AssocItemLoc<N> {
+impl<N: AstIdNode> Clone for AssocItemLoc<'_, N> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<N: AstIdNode> Copy for AssocItemLoc<N> {}
+impl<N: AstIdNode> Copy for AssocItemLoc<'_, N> {}
 
-impl<N: AstIdNode> PartialEq for AssocItemLoc<N> {
+impl<N: AstIdNode> PartialEq for AssocItemLoc<'_, N> {
     fn eq(&self, other: &Self) -> bool {
         self.container == other.container && self.id == other.id
     }
 }
 
-impl<N: AstIdNode> Eq for AssocItemLoc<N> {}
+impl<N: AstIdNode> Eq for AssocItemLoc<'_, N> {}
 
-impl<N: AstIdNode> Hash for AssocItemLoc<N> {
+impl<N: AstIdNode> Hash for AssocItemLoc<'_, N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.container.hash(state);
         self.id.hash(state);
     }
 }
 
-impl<'db, N: AstIdNode> HasModule<'db> for AssocItemLoc<N> {
+impl<'db, N: AstIdNode> HasModule<'db> for AssocItemLoc<'_, N> {
     #[inline]
     fn module(&self, db: &'db dyn SourceDatabase) -> ModuleId {
         self.container.module(db)
@@ -196,15 +196,15 @@ impl<'db, N: AstIdNode> HasModule<'db> for AssocItemLoc<N> {
 pub trait AstIdLoc {
     type Container;
     type Ast: AstNode;
-    fn ast_id(&self) -> AstId<Self::Ast>;
+    fn ast_id(&self) -> AstId<'_, Self::Ast>;
     fn container(&self) -> Self::Container;
 }
 
-impl<N: AstIdNode> AstIdLoc for ItemLoc<N> {
+impl<N: AstIdNode> AstIdLoc for ItemLoc<'_, N> {
     type Container = ModuleId;
     type Ast = N;
     #[inline]
-    fn ast_id(&self) -> AstId<Self::Ast> {
+    fn ast_id(&self) -> AstId<'_, Self::Ast> {
         self.id
     }
     #[inline]
@@ -213,11 +213,11 @@ impl<N: AstIdNode> AstIdLoc for ItemLoc<N> {
     }
 }
 
-impl<N: AstIdNode> AstIdLoc for AssocItemLoc<N> {
+impl<N: AstIdNode> AstIdLoc for AssocItemLoc<'_, N> {
     type Container = ItemContainerId;
     type Ast = N;
     #[inline]
-    fn ast_id(&self) -> AstId<Self::Ast> {
+    fn ast_id(&self) -> AstId<'_, Self::Ast> {
         self.id
     }
     #[inline]
@@ -227,18 +227,18 @@ impl<N: AstIdNode> AstIdLoc for AssocItemLoc<N> {
 }
 
 macro_rules! impl_intern {
-    ($id:ident, $loc:ident) => {
+    ($id:ident, $loc:ty) => {
         impl_intern_key!($id, $loc);
         impl_intern_lookup!($id, $loc);
     };
 }
 
 macro_rules! impl_loc {
-    ($loc:ident, $id:ident: $id_ty:ident, $container:ident: $container_type:ident) => {
-        impl AstIdLoc for $loc {
+    ($loc:ty, $id:ident: $id_ty:ident, $container:ident: $container_type:ident) => {
+        impl<'db> AstIdLoc for $loc {
             type Container = $container_type;
             type Ast = ast::$id_ty;
-            fn ast_id(&self) -> AstId<Self::Ast> {
+            fn ast_id(&self) -> AstId<'_, Self::Ast> {
                 self.$id
             }
             fn container(&self) -> Self::Container {
@@ -255,11 +255,11 @@ macro_rules! impl_loc {
     };
 }
 
-type FunctionLoc = AssocItemLoc<ast::Fn>;
-impl_intern!(FunctionId, FunctionLoc);
+type FunctionLoc<'db> = AssocItemLoc<'db, ast::Fn>;
+impl_intern!(FunctionId, FunctionLoc<'db>);
 
-type StructLoc = ItemLoc<ast::Struct>;
-impl_intern!(StructId, StructLoc);
+type StructLoc<'db> = ItemLoc<'db, ast::Struct>;
+impl_intern!(StructId, StructLoc<'db>);
 
 impl<'db> StructId {
     pub fn fields(self, db: &'db dyn SourceDatabase) -> &'db VariantFields<'db> {
@@ -275,8 +275,8 @@ impl<'db> StructId {
     }
 }
 
-pub type UnionLoc = ItemLoc<ast::Union>;
-impl_intern!(UnionId, UnionLoc);
+pub type UnionLoc<'db> = ItemLoc<'db, ast::Union>;
+impl_intern!(UnionId, UnionLoc<'db>);
 
 impl<'db> UnionId {
     pub fn fields(self, db: &'db dyn SourceDatabase) -> &'db VariantFields<'db> {
@@ -292,8 +292,8 @@ impl<'db> UnionId {
     }
 }
 
-pub type EnumLoc = ItemLoc<ast::Enum>;
-impl_intern!(EnumId, EnumLoc);
+pub type EnumLoc<'db> = ItemLoc<'db, ast::Enum>;
+impl_intern!(EnumId, EnumLoc<'db>);
 
 impl EnumId {
     #[inline]
@@ -310,14 +310,14 @@ impl EnumId {
     }
 }
 
-type ConstLoc = AssocItemLoc<ast::Const>;
-impl_intern!(ConstId, ConstLoc);
+type ConstLoc<'db> = AssocItemLoc<'db, ast::Const>;
+impl_intern!(ConstId, ConstLoc<'db>);
 
-pub type StaticLoc = AssocItemLoc<ast::Static>;
-impl_intern!(StaticId, StaticLoc);
+pub type StaticLoc<'db> = AssocItemLoc<'db, ast::Static>;
+impl_intern!(StaticId, StaticLoc<'db>);
 
-pub type TraitLoc = ItemLoc<ast::Trait>;
-impl_intern!(TraitId, TraitLoc);
+pub type TraitLoc<'db> = ItemLoc<'db, ast::Trait>;
+impl_intern!(TraitId, TraitLoc<'db>);
 
 impl TraitId {
     #[inline]
@@ -326,11 +326,11 @@ impl TraitId {
     }
 }
 
-type TypeAliasLoc = AssocItemLoc<ast::TypeAlias>;
-impl_intern!(TypeAliasId, TypeAliasLoc);
+type TypeAliasLoc<'db> = AssocItemLoc<'db, ast::TypeAlias>;
+impl_intern!(TypeAliasId, TypeAliasLoc<'db>);
 
-type ImplLoc = ItemLoc<ast::Impl>;
-impl_intern!(ImplId, ImplLoc);
+type ImplLoc<'db> = ItemLoc<'db, ast::Impl>;
+impl_intern!(ImplId, ImplLoc<'db>);
 
 impl ImplId {
     #[inline]
@@ -362,14 +362,14 @@ pub struct BuiltinDeriveImplId {
     pub loc: BuiltinDeriveImplLoc,
 }
 
-type UseLoc = ItemLoc<ast::Use>;
-impl_intern!(UseId, UseLoc);
+type UseLoc<'db> = ItemLoc<'db, ast::Use>;
+impl_intern!(UseId, UseLoc<'db>);
 
-type ExternCrateLoc = ItemLoc<ast::ExternCrate>;
-impl_intern!(ExternCrateId, ExternCrateLoc);
+type ExternCrateLoc<'db> = ItemLoc<'db, ast::ExternCrate>;
+impl_intern!(ExternCrateId, ExternCrateLoc<'db>);
 
-type ExternBlockLoc = ItemLoc<ast::ExternBlock>;
-impl_intern!(ExternBlockId, ExternBlockLoc);
+type ExternBlockLoc<'db> = ItemLoc<'db, ast::ExternBlock>;
+impl_intern!(ExternBlockId, ExternBlockLoc<'db>);
 
 impl ExternBlockId {
     pub fn abi(self, db: &dyn SourceDatabase) -> ExternAbi {
@@ -377,16 +377,16 @@ impl ExternBlockId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EnumVariantLoc {
-    pub id: AstId<ast::Variant>,
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
+pub struct EnumVariantLoc<'db> {
+    pub id: AstId<'db, ast::Variant>,
     pub parent: EnumId,
     pub name: Name,
 }
-impl_intern!(EnumVariantId, EnumVariantLoc);
-impl_loc!(EnumVariantLoc, id: Variant, parent: EnumId);
+impl_intern!(EnumVariantId, EnumVariantLoc<'db>);
+impl_loc!(EnumVariantLoc<'db>, id: Variant, parent: EnumId);
 
-impl EnumVariantLoc {
+impl<'db> EnumVariantLoc<'db> {
     pub fn index(&self, db: &dyn SourceDatabase) -> usize {
         self.parent
             .enum_variants(db)
@@ -415,27 +415,27 @@ impl<'db> EnumVariantId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Macro2Loc {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
+pub struct Macro2Loc<'db> {
     pub container: ModuleId,
-    pub id: AstId<ast::MacroDef>,
+    pub id: AstId<'db, ast::MacroDef>,
     pub expander: MacroExpander,
     pub allow_internal_unsafe: bool,
     pub edition: Edition,
 }
-impl_intern!(Macro2Id, Macro2Loc);
-impl_loc!(Macro2Loc, id: MacroDef, container: ModuleId);
+impl_intern!(Macro2Id, Macro2Loc<'db>);
+impl_loc!(Macro2Loc<'db>, id: MacroDef, container: ModuleId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroRulesLoc {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
+pub struct MacroRulesLoc<'db> {
     pub container: ModuleId,
-    pub id: AstId<ast::MacroRules>,
+    pub id: AstId<'db, ast::MacroRules>,
     pub expander: MacroExpander,
     pub flags: MacroRulesLocFlags,
     pub edition: Edition,
 }
-impl_intern!(MacroRulesId, MacroRulesLoc);
-impl_loc!(MacroRulesLoc, id: MacroRules, container: ModuleId);
+impl_intern!(MacroRulesId, MacroRulesLoc<'db>);
+impl_loc!(MacroRulesLoc<'db>, id: MacroRules, container: ModuleId);
 
 bitflags::bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -455,16 +455,16 @@ pub enum MacroExpander {
     UnimplementedBuiltIn,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ProcMacroLoc {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
+pub struct ProcMacroLoc<'db> {
     pub container: ModuleId,
-    pub id: AstId<ast::Fn>,
+    pub id: AstId<'db, ast::Fn>,
     pub expander: CustomProcMacroExpander,
     pub kind: ProcMacroKind,
     pub edition: Edition,
 }
-impl_intern!(ProcMacroId, ProcMacroLoc);
-impl_loc!(ProcMacroLoc, id: Fn, container: ModuleId);
+impl_intern!(ProcMacroId, ProcMacroLoc<'db>);
+impl_loc!(ProcMacroLoc<'db>, id: Fn, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum LoweringMode {
@@ -497,7 +497,7 @@ mod tracked_struct_token {
 #[derive(PartialOrd, Ord)]
 pub struct BlockIdLt<'db> {
     #[returns(copy)]
-    pub ast_id: AstId<ast::BlockExpr>,
+    pub ast_id: AstId<'db, ast::BlockExpr>,
     /// The containing module.
     #[returns(copy)]
     pub module: ModuleIdLt<'db>,
@@ -513,7 +513,7 @@ impl<'db> fmt::Debug for BlockIdLt<'db> {
 impl<'db> BlockIdLt<'db> {
     pub fn new(
         db: &'db dyn SourceDatabase,
-        ast_id: AstId<ast::BlockExpr>,
+        ast_id: AstId<'db, ast::BlockExpr>,
         module: ModuleIdLt<'db>,
         token: TrackedStructToken,
     ) -> Self {
@@ -763,7 +763,7 @@ impl MacroId {
 impl MacroId {
     /// Turns a MacroId into a MacroDefId, describing the macro's definition post name resolution.
     #[salsa::tracked(returns(copy))]
-    pub fn definition(self, db: &dyn SourceDatabase) -> MacroDefId {
+    pub fn definition(self, db: &dyn SourceDatabase) -> MacroDefId<'_> {
         let kind = |expander, file_id, m| {
             let in_file = InFile::new(file_id, m);
             match expander {
@@ -1007,14 +1007,14 @@ impl From<ImplId> for ExpressionStoreOwnerId {
 }
 
 impl GenericDefId {
-    pub fn file_id_and_params_of(
+    pub fn file_id_and_params_of<'db>(
         self,
-        db: &dyn SourceDatabase,
-    ) -> (HirFileId, Option<ast::GenericParamList>) {
+        db: &'db dyn SourceDatabase,
+    ) -> (HirFileId<'db>, Option<ast::GenericParamList>) {
         fn file_id_and_params_of_item_loc<'db, Loc>(
             db: &'db dyn SourceDatabase,
             def: impl Lookup<'db, Data = Loc>,
-        ) -> (HirFileId, Option<ast::GenericParamList>)
+        ) -> (HirFileId<'db>, Option<ast::GenericParamList>)
         where
             Loc: src::HasSource + 'db,
             Loc::Value: ast::HasGenericParams,
@@ -1163,7 +1163,7 @@ impl<'db> VariantId {
         (&r.0, &r.1)
     }
 
-    pub fn file_id(self, db: &dyn SourceDatabase) -> HirFileId {
+    pub fn file_id<'db>(self, db: &'db dyn SourceDatabase) -> HirFileId<'db> {
         match self {
             VariantId::EnumVariantId(it) => it.lookup(db).id.file_id,
             VariantId::StructId(it) => it.lookup(db).id.file_id,
@@ -1208,7 +1208,7 @@ pub trait HasModule<'db> {
 impl<'db, N, ItemId> HasModule<'db> for ItemId
 where
     N: AstIdNode + 'db,
-    ItemId: Lookup<'db, Data = ItemLoc<N>> + Copy,
+    ItemId: Lookup<'db, Data = ItemLoc<'db, N>> + Copy,
 {
     #[inline]
     fn module(&self, db: &'db dyn SourceDatabase) -> ModuleId {
@@ -1233,7 +1233,7 @@ where
 #[inline]
 fn module_for_assoc_item_loc<'db>(
     db: &'db dyn SourceDatabase,
-    id: impl Lookup<'db, Data = AssocItemLoc<impl AstIdNode + 'db>>,
+    id: impl Lookup<'db, Data = AssocItemLoc<'db, impl AstIdNode + 'db>>,
 ) -> ModuleId {
     id.lookup(db).container.module(db)
 }
@@ -1426,32 +1426,36 @@ impl ModuleDefId {
 }
 /// Helper wrapper for `AstId` with `ModPath`
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct AstIdWithPath<T: AstIdNode> {
-    ast_id: AstId<T>,
+struct AstIdWithPath<'db, T: AstIdNode> {
+    ast_id: AstId<'db, T>,
     path: Interned<ModPath>,
 }
 
-impl<T: AstIdNode> AstIdWithPath<T> {
-    fn new(file_id: HirFileId, ast_id: FileAstId<T>, path: Interned<ModPath>) -> AstIdWithPath<T> {
+impl<'db, T: AstIdNode> AstIdWithPath<'db, T> {
+    fn new(
+        file_id: HirFileId<'db>,
+        ast_id: FileAstId<T>,
+        path: Interned<ModPath>,
+    ) -> AstIdWithPath<'db, T> {
         AstIdWithPath { ast_id: AstId::new(file_id, ast_id), path }
     }
 }
 
-pub fn macro_call_as_call_id(
-    db: &dyn SourceDatabase,
-    ast_id: AstId<ast::MacroCall>,
+pub fn macro_call_as_call_id<'db>(
+    db: &'db dyn SourceDatabase,
+    ast_id: AstId<'db, ast::MacroCall>,
     path: &ModPath,
     call_site: SyntaxContext,
     expand_to: ExpandTo,
     krate: Crate,
     macro_depth: u32,
     recursion_limit: u32,
-    resolver: impl Fn(&ModPath) -> Option<MacroDefId> + Copy,
+    resolver: impl Fn(&ModPath) -> Option<MacroDefId<'db>> + Copy,
     eager_callback: &mut dyn FnMut(
-        InFile<(syntax::AstPtr<ast::MacroCall>, span::FileAstId<ast::MacroCall>)>,
-        MacroCallId,
+        InFile<'db, (syntax::AstPtr<ast::MacroCall>, span::FileAstId<ast::MacroCall>)>,
+        MacroCallId<'db>,
     ),
-) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
+) -> Result<ExpandResult<Option<MacroCallId<'db>>>, UnresolvedMacro> {
     let def = resolver(path).ok_or_else(|| UnresolvedMacro { path: path.clone() })?;
 
     let res = match def.kind {
@@ -1556,10 +1560,10 @@ impl Complete {
 
 // return: macro call id and include file id
 #[salsa::tracked(returns(ref))]
-pub fn include_macro_invoc(
-    db: &dyn SourceDatabase,
+pub fn include_macro_invoc<'db>(
+    db: &'db dyn SourceDatabase,
     krate: Crate,
-) -> Box<[(MacroCallId, EditionedFileId)]> {
+) -> Box<[(MacroCallId<'db>, EditionedFileId)]> {
     crate_def_map(db, krate)
         .modules
         .values()

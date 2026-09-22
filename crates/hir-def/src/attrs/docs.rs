@@ -41,7 +41,7 @@ struct DocsSourceMapLine {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
-pub struct Docs {
+pub struct Docs<'db> {
     /// The concatenated string of all `#[doc = "..."]` attributes and documentation comments.
     docs: String,
     /// A sorted map from an offset in `docs` to an offset in the source code.
@@ -50,8 +50,8 @@ pub struct Docs {
     /// list of the outline and inline docs (outline first). Then, this field contains the [`HirFileId`]
     /// of the outline declaration, and the index in `docs` from which the inline docs
     /// begin.
-    outline_mod: Option<(HirFileId, usize)>,
-    inline_file: HirFileId,
+    outline_mod: Option<(HirFileId<'db>, usize)>,
+    inline_file: HirFileId<'db>,
     /// The size of the prepended prefix, which does not map to real doc comments.
     prefix_len: TextSize,
     /// The offset in `docs` from which the docs are inner attributes/comments.
@@ -60,7 +60,7 @@ pub struct Docs {
     /// (as outline modules don't have inner attributes).
     outline_inner_docs_start: Option<TextSize>,
     /// All macro calls in `#[doc = ...]` attributes, recursively.
-    macro_calls: ThinVec<(AstId<ast::MacroCall>, MacroCallId)>,
+    macro_calls: ThinVec<(AstId<'db, ast::MacroCall>, MacroCallId<'db>)>,
 }
 
 #[derive(Clone, Copy)]
@@ -90,7 +90,7 @@ impl IsInnerDoc {
     }
 }
 
-impl Docs {
+impl<'db> Docs<'db> {
     #[inline]
     pub fn docs(&self) -> &str {
         &self.docs
@@ -102,7 +102,9 @@ impl Docs {
     }
 
     #[inline]
-    pub fn macro_calls(&self) -> impl Iterator<Item = (AstId<ast::MacroCall>, MacroCallId)> {
+    pub fn macro_calls(
+        &self,
+    ) -> impl Iterator<Item = (AstId<'db, ast::MacroCall>, MacroCallId<'db>)> {
         self.macro_calls.iter().copied()
     }
 
@@ -123,7 +125,7 @@ impl Docs {
     pub fn find_ast_range(
         &self,
         mut string_range: TextRange,
-    ) -> Option<(InFile<TextRange>, IsInnerDoc)> {
+    ) -> Option<(InFile<'db, TextRange>, IsInnerDoc)> {
         if string_range.start() < self.prefix_len {
             return None;
         }
@@ -193,7 +195,7 @@ impl Docs {
         self.docs.push_str(s);
     }
 
-    pub fn append(&mut self, other: &Docs) {
+    pub fn append(&mut self, other: &Docs<'db>) {
         let other_offset = TextSize::of(&self.docs);
 
         assert!(
@@ -342,8 +344,8 @@ impl Docs {
 
     fn remove_indent(&mut self, indent: &Indent) {
         /// In case of panics, we want to avoid corrupted UTF-8 in `self.docs`, so we clear it.
-        struct Guard<'a>(&'a mut Docs);
-        impl Drop for Guard<'_> {
+        struct Guard<'a, 'db>(&'a mut Docs<'db>);
+        impl Drop for Guard<'_, '_> {
             fn drop(&mut self) {
                 let Docs {
                     docs,
@@ -560,14 +562,14 @@ struct DocMacroExpander<'db> {
     macro_depth: u32,
     recursion_limit: u32,
     resolver: Resolver<'db>,
-    file_id: HirFileId,
+    file_id: HirFileId<'db>,
     ast_id_map: &'db AstIdMap,
     span_map: SpanMap<'db>,
 }
 
 fn expand_doc_expr_via_macro_pipeline<'db>(
     expander: &mut DocMacroExpander<'db>,
-    macro_calls: &mut ThinVec<(AstId<ast::MacroCall>, MacroCallId)>,
+    macro_calls: &mut ThinVec<(AstId<'db, ast::MacroCall>, MacroCallId<'db>)>,
     expr: ast::Expr,
 ) -> Option<String> {
     match expr {
@@ -588,7 +590,7 @@ fn expand_doc_expr_via_macro_pipeline<'db>(
 
 fn expand_doc_macro_call<'db>(
     expander: &mut DocMacroExpander<'db>,
-    macro_calls: &mut ThinVec<(AstId<ast::MacroCall>, MacroCallId)>,
+    macro_calls: &mut ThinVec<(AstId<'db, ast::MacroCall>, MacroCallId<'db>)>,
     macro_call: ast::MacroCall,
 ) -> Option<String> {
     if expander.macro_depth >= expander.recursion_limit {
@@ -625,7 +627,7 @@ fn expand_doc_macro_call<'db>(
     // Build a new source context for the expansion file so that any further
     // recursive expansion (e.g. a user macro expanding to `concat!(...)`)
     // correctly resolves AstIds and spans in the expansion.
-    let expansion_file_id: HirFileId = call_id.into();
+    let expansion_file_id: HirFileId<'_> = call_id.into();
     let old_file_id = std::mem::replace(&mut expander.file_id, expansion_file_id);
     let old_span_map =
         std::mem::replace(&mut expander.span_map, SpanMap::ExpansionSpanMap(span_map));
@@ -644,11 +646,11 @@ fn expand_doc_macro_call<'db>(
 }
 
 fn extend_with_attrs<'a, 'db>(
-    result: &mut Docs,
+    result: &mut Docs<'db>,
     db: &'db dyn SourceDatabase,
     krate: Crate,
     node: &SyntaxNode,
-    file_id: HirFileId,
+    file_id: HirFileId<'db>,
     expect_inner_attrs: bool,
     indent: &mut Indent,
     get_cfg_options: &dyn Fn() -> &'a CfgOptions,
@@ -716,10 +718,10 @@ pub(crate) fn extract_docs<'a, 'db>(
     krate: Crate,
     resolver: &dyn Fn() -> Resolver<'db>,
     get_cfg_options: &dyn Fn() -> &'a CfgOptions,
-    source: InFile<ast::AnyHasAttrs>,
-    outer_mod_decl: Option<InFile<ast::Module>>,
+    source: InFile<'db, ast::AnyHasAttrs>,
+    outer_mod_decl: Option<InFile<'db, ast::Module>>,
     inner_attrs_node: Option<SyntaxNode>,
-) -> Option<Box<Docs>> {
+) -> Option<Box<Docs<'db>>> {
     let mut result = Docs {
         docs: String::new(),
         docs_source_map: Vec::new(),
@@ -1008,7 +1010,7 @@ mod tests {
 
     /// Extracts the docs of the first comment in `source`, running the same normalization as
     /// [`super::extract_docs`] does for inline docs.
-    fn comment_docs(source: &str) -> Docs {
+    fn comment_docs(source: &str) -> Docs<'static> {
         let (_db, file_id) = TestDB::with_single_file("");
         let comment = syntax::SourceFile::parse(source, span::Edition::CURRENT)
             .syntax_node()

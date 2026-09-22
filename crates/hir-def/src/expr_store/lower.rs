@@ -71,7 +71,7 @@ pub(super) fn lower_body<'db>(
     db: &'db dyn SourceDatabase,
     owner: DefWithBodyId,
     syntax_node: SyntaxNodePtr,
-    current_file_id: HirFileId,
+    current_file_id: HirFileId<'db>,
     module: ModuleId,
     parameters: Option<ast::ParamList>,
     body: Option<ast::Expr>,
@@ -210,7 +210,7 @@ pub(super) fn lower_body<'db>(
 fn validate_required_body(
     db: &(dyn SourceDatabase + 'static),
     owner: DefWithBodyId,
-    current_file_id: HirFileId,
+    current_file_id: HirFileId<'_>,
     syntax_node: SyntaxNodePtr,
     body: Option<&ast::Expr>,
     collector: &mut ExprCollector<'_>,
@@ -244,7 +244,7 @@ fn validate_required_body(
 pub(crate) fn lower_type_ref<'db>(
     db: &'db dyn SourceDatabase,
     module: ModuleId,
-    type_ref: InFile<Option<ast::Type>>,
+    type_ref: InFile<'_, Option<ast::Type>>,
 ) -> (ExpressionStore<'db>, ExpressionStoreSourceMap<'db>, TypeRefId<'db>) {
     let mut expr_collector =
         ExprCollector::new(db, module, type_ref.file_id, LoweringMode::Analysis);
@@ -258,7 +258,7 @@ pub fn lower_generic_params<'db>(
     db: &'db dyn SourceDatabase,
     module: ModuleId,
     def: GenericDefId,
-    file_id: HirFileId,
+    file_id: HirFileId<'_>,
     param_list: Option<ast::GenericParamList>,
     where_clause: Option<ast::WhereClause>,
     mode: LoweringMode,
@@ -274,7 +274,7 @@ pub fn lower_generic_params<'db>(
 pub(crate) fn lower_impl<'db>(
     db: &'db dyn SourceDatabase,
     module: ModuleId,
-    impl_syntax: InFile<ast::Impl>,
+    impl_syntax: InFile<'_, ast::Impl>,
     impl_id: ImplId,
 ) -> (
     ExpressionStore<'db>,
@@ -309,7 +309,7 @@ pub(crate) fn lower_impl<'db>(
 pub(crate) fn lower_trait<'db>(
     db: &'db dyn SourceDatabase,
     module: ModuleId,
-    trait_syntax: InFile<ast::Trait>,
+    trait_syntax: InFile<'_, ast::Trait>,
     trait_id: TraitId,
 ) -> (ExpressionStore<'db>, ExpressionStoreSourceMap<'db>, GenericParams<'db>) {
     let mut expr_collector =
@@ -332,7 +332,7 @@ pub(crate) fn lower_trait<'db>(
 pub(crate) fn lower_type_alias<'db>(
     db: &'db dyn SourceDatabase,
     container: ItemContainerId,
-    alias: InFile<ast::TypeAlias>,
+    alias: InFile<'_, ast::TypeAlias>,
     type_alias_id: TypeAliasId,
 ) -> (
     ExpressionStore<'db>,
@@ -388,7 +388,7 @@ pub(crate) fn lower_type_alias<'db>(
 pub(crate) fn lower_function<'db>(
     db: &'db dyn SourceDatabase,
     module: ModuleId,
-    fn_: InFile<ast::Fn>,
+    fn_: InFile<'_, ast::Fn>,
     function_id: FunctionId,
 ) -> (
     ExpressionStore<'db>,
@@ -542,7 +542,7 @@ pub struct ExprCollector<'db> {
 
     current_try_block: Option<TryBlock>,
 
-    label_ribs: Vec<LabelRib>,
+    label_ribs: Vec<LabelRib<'db>>,
     unowned_bindings: Vec<BindingId>,
 
     awaitable_context: Option<Awaitable>,
@@ -552,25 +552,25 @@ pub struct ExprCollector<'db> {
 }
 
 #[derive(Clone, Debug)]
-struct LabelRib {
-    kind: RibKind,
+struct LabelRib<'db> {
+    kind: RibKind<'db>,
 }
 
-impl LabelRib {
-    fn new(kind: RibKind) -> Self {
+impl<'db> LabelRib<'db> {
+    fn new(kind: RibKind<'db>) -> Self {
         LabelRib { kind }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-enum RibKind {
+enum RibKind<'db> {
     Normal(Name, LabelId, HygieneId),
     Closure,
     Constant,
-    MacroDef(Box<MacroDefId>),
+    MacroDef(Box<MacroDefId<'db>>),
 }
 
-impl RibKind {
+impl RibKind<'_> {
     /// This rib forbids referring to labels defined in upwards ribs.
     fn is_label_barrier(&self) -> bool {
         match self {
@@ -681,7 +681,7 @@ impl<'db> ExprCollector<'db> {
     pub fn new(
         db: &'db dyn SourceDatabase,
         module: ModuleId,
-        current_file_id: HirFileId,
+        current_file_id: HirFileId<'_>,
         lowering_mode: LoweringMode,
     ) -> ExprCollector<'db> {
         let (def_map, local_def_map) = module.local_def_map(db);
@@ -3468,7 +3468,7 @@ impl<'db> ExprCollector<'db> {
         }
     }
 
-    fn with_label_rib<T>(&mut self, kind: RibKind, f: impl FnOnce(&mut Self) -> T) -> T {
+    fn with_label_rib<T>(&mut self, kind: RibKind<'db>, f: impl FnOnce(&mut Self) -> T) -> T {
         self.label_ribs.push(LabelRib::new(kind));
         let res = f(self);
         self.pop_label_rib();

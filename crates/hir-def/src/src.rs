@@ -13,11 +13,11 @@ use crate::{
 
 pub trait HasSource {
     type Value: AstNode;
-    fn source(&self, db: &dyn SourceDatabase) -> InFile<Self::Value> {
+    fn source(&self, db: &dyn SourceDatabase) -> InFile<'_, Self::Value> {
         let InFile { file_id, value } = self.ast_ptr(db);
         InFile::new(file_id, value.to_node(&file_id.parse_or_expand(db)))
     }
-    fn ast_ptr(&self, db: &dyn SourceDatabase) -> InFile<AstPtr<Self::Value>>;
+    fn ast_ptr(&self, db: &dyn SourceDatabase) -> InFile<'_, AstPtr<Self::Value>>;
 }
 
 impl<T> HasSource for T
@@ -25,7 +25,7 @@ where
     T: AstIdLoc,
 {
     type Value = T::Ast;
-    fn ast_ptr(&self, db: &dyn SourceDatabase) -> InFile<AstPtr<Self::Value>> {
+    fn ast_ptr(&self, db: &dyn SourceDatabase) -> InFile<'_, AstPtr<Self::Value>> {
         let id = self.ast_id();
         let ast_id_map = id.file_id.ast_id_map(db);
         InFile::new(id.file_id, ast_id_map.get(id.value))
@@ -34,13 +34,16 @@ where
 
 pub trait HasChildSource<'db, ChildId> {
     type Value;
-    fn child_source(&self, db: &'db dyn SourceDatabase) -> InFile<ArenaMap<ChildId, Self::Value>>;
+    fn child_source<'db>(
+        &self,
+        db: &'db dyn SourceDatabase,
+    ) -> InFile<'db, ArenaMap<ChildId, Self::Value>>;
 }
 
 /// Maps a `UseTree` contained in this import back to its AST node.
 pub fn use_tree_to_ast(
     db: &dyn SourceDatabase,
-    use_ast_id: AstId<ast::Use>,
+    use_ast_id: AstId<'_, ast::Use>,
     index: Idx<ast::UseTree>,
 ) -> ast::UseTree {
     use_tree_source_map(db, use_ast_id)[index].clone()
@@ -49,7 +52,7 @@ pub fn use_tree_to_ast(
 /// Maps a `UseTree` contained in this import back to its AST node.
 fn use_tree_source_map(
     db: &dyn SourceDatabase,
-    use_ast_id: AstId<ast::Use>,
+    use_ast_id: AstId<'_, ast::Use>,
 ) -> Arena<ast::UseTree> {
     // Re-lower the AST item and get the source map.
     // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
@@ -65,10 +68,10 @@ fn use_tree_source_map(
 
 impl HasChildSource<'_, la_arena::Idx<ast::UseTree>> for UseId {
     type Value = ast::UseTree;
-    fn child_source(
+    fn child_source<'db>(
         &self,
-        db: &dyn SourceDatabase,
-    ) -> InFile<ArenaMap<la_arena::Idx<ast::UseTree>, Self::Value>> {
+        db: &'db dyn SourceDatabase,
+    ) -> InFile<'db, ArenaMap<la_arena::Idx<ast::UseTree>, Self::Value>> {
         let loc = self.lookup(db);
         InFile::new(loc.id.file_id, use_tree_source_map(db, loc.id).into_iter().collect())
     }
@@ -76,10 +79,10 @@ impl HasChildSource<'_, la_arena::Idx<ast::UseTree>> for UseId {
 
 impl<'db> HasChildSource<'db, LocalTypeOrConstParamId<'db>> for GenericDefId {
     type Value = Either<ast::TypeOrConstParam, ast::Trait>;
-    fn child_source(
+    fn child_source<'db>(
         &self,
         db: &'db dyn SourceDatabase,
-    ) -> InFile<ArenaMap<LocalTypeOrConstParamId<'db>, Self::Value>> {
+    ) -> InFile<'db, ArenaMap<LocalTypeOrConstParamId<'db>, Self::Value>> {
         let generic_params = GenericParams::of(db, *self);
         let mut idx_iter = generic_params.iter_type_or_consts().map(|(idx, _)| idx);
 
@@ -110,10 +113,10 @@ impl<'db> HasChildSource<'db, LocalTypeOrConstParamId<'db>> for GenericDefId {
 
 impl HasChildSource<'_, LocalLifetimeParamId> for GenericDefId {
     type Value = ast::LifetimeParam;
-    fn child_source(
+    fn child_source<'db>(
         &self,
-        db: &dyn SourceDatabase,
-    ) -> InFile<ArenaMap<LocalLifetimeParamId, Self::Value>> {
+        db: &'db dyn SourceDatabase,
+    ) -> InFile<'db, ArenaMap<LocalLifetimeParamId, Self::Value>> {
         let generic_params = GenericParams::of(db, *self);
         let idx_iter = generic_params.iter_lt().map(|(idx, _)| idx);
 
@@ -134,10 +137,10 @@ impl HasChildSource<'_, LocalLifetimeParamId> for GenericDefId {
 impl<'db> HasChildSource<'_, LocalFieldId<'db>> for VariantId {
     type Value = Either<ast::TupleField, ast::RecordField>;
 
-    fn child_source(
+    fn child_source<'db>(
         &self,
-        db: &dyn SourceDatabase,
-    ) -> InFile<ArenaMap<LocalFieldId<'db>, Self::Value>> {
+        db: &'db dyn SourceDatabase,
+    ) -> InFile<'db, ArenaMap<LocalFieldId, Self::Value>> {
         let (src, container) = match *self {
             VariantId::EnumVariantId(it) => {
                 let lookup = it.lookup(db);

@@ -305,7 +305,7 @@ impl<'db> VariantFields<'db> {
 pub fn visibility_from_ast<'db>(
     db: &'db dyn SourceDatabase,
     has_resolver: impl HasResolver + HasModule<'db>,
-    ast_vis: InFile<Option<ast::Visibility>>,
+    ast_vis: InFile<'_, Option<ast::Visibility>>,
 ) -> Visibility {
     let mut span_map = None;
     let raw_vis = crate::item_tree::visibility_from_ast(db, ast_vis.value, &mut |range| {

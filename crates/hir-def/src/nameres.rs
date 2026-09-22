@@ -195,11 +195,11 @@ pub struct DefMap<'db> {
     /// attributes.
     // FIXME: Figure out a better way for the IDE layer to resolve these?
     derive_helpers_in_scope: FxHashMap<
-        AstId<ast::Item>,
-        Vec<(Name, MacroId, Either<MacroCallId, BuiltinDeriveImplId<'db>>)>,
+        AstId<'db, ast::Item>,
+        Vec<(Name, MacroId, Either<MacroCallId<'db>, BuiltinDeriveImplId<'db>>)>,
     >,
     /// A mapping from [`hir_expand::MacroDefId`] to [`crate::MacroId`].
-    pub macro_def_to_macro_id: FxHashMap<ErasedAstId, MacroId>,
+    pub macro_def_to_macro_id: FxHashMap<ErasedAstId<'db>, MacroId>,
 
     /// The diagnostics that need to be emitted for this crate.
     diagnostics: Vec<DefDiagnostic>,
@@ -310,7 +310,7 @@ pub enum ModuleOrigin {
     /// Pseudo-module introduced by a block scope (contains only inner items).
     BlockExpr {
         id: BlockId,
-        block: AstId<ast::BlockExpr>,
+        block: AstId<'db, ast::BlockExpr>,
     },
 }
 

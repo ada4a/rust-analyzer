@@ -367,7 +367,7 @@ impl AttrId {
         self,
         db: &dyn SourceDatabase,
         krate: Crate,
-        owner: AstId<N>,
+        owner: AstId<'_, N>,
     ) -> (ast::Attr, ast::Meta) {
         self.find_attr_range_with_source(db, krate, &owner.to_node(db))
     }
@@ -419,7 +419,7 @@ impl AttrId {
         self,
         db: &dyn SourceDatabase,
         krate: Crate,
-        owner: AstId<ast::Adt>,
+        owner: AstId<'_, ast::Adt>,
         derive_index: u32,
     ) -> TextRange {
         let (_, derive_attr) = self.find_attr_range(db, krate, owner);

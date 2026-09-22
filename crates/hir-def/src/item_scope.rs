@@ -164,20 +164,20 @@ pub struct ItemScope<'db> {
     // be all resolved to the last one defined if shadowing happens.
     legacy_macros: FxHashMap<Name, SmallVec<[MacroId; 1]>>,
     /// The attribute macro invocations in this scope.
-    attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
+    attr_macros: FxHashMap<AstId<'db, ast::Item>, MacroCallId<'db>>,
     /// The macro invocations in this scope.
-    macro_invocations: FxHashMap<AstId<ast::MacroCall>, MacroCallId>,
+    macro_invocations: FxHashMap<AstId<'db, ast::MacroCall>, MacroCallId<'db>>,
     /// The derive macro invocations in this scope, keyed by the owner item over the actual derive attributes
     /// paired with the derive macro invocations for the specific attribute.
-    derive_macros: FxHashMap<AstId<ast::Adt>, SmallVec<[DeriveMacroInvocation<'db>; 1]>>,
+    derive_macros: FxHashMap<AstId<'db, ast::Adt>, SmallVec<[DeriveMacroInvocation<'db>; 1]>>,
 }
 
 #[derive(Debug, PartialEq, Eq, SalsaValue)]
 struct DeriveMacroInvocation<'db> {
     attr_id: AttrId,
     /// The `#[derive]` call
-    attr_call_id: MacroCallId,
-    derive_call_ids: SmallVec<[Option<Either<MacroCallId, BuiltinDeriveImplId<'db>>>; 4]>,
+    attr_call_id: MacroCallId<'db>,
+    derive_call_ids: SmallVec<[Option<Either<MacroCallId<'db>, BuiltinDeriveImplId<'db>>>; 4]>,
 }
 
 pub(crate) static BUILTIN_SCOPE: LazyLock<FxIndexMap<Name, PerNs>> = LazyLock::new(|| {

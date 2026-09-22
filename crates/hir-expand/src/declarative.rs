@@ -32,7 +32,7 @@ impl DeclarativeMacroExpander {
         &self,
         db: &dyn SourceDatabase,
         tt: &tt::TopSubtree,
-        call_id: MacroCallId,
+        call_id: MacroCallId<'_>,
         span: Span,
     ) -> ExpandResult<(tt::TopSubtree, Option<u32>)> {
         let loc = call_id.loc(db);
@@ -79,7 +79,7 @@ impl DeclarativeMacroExpander {
 }
 
 #[salsa::tracked]
-impl AstId<ast::Macro> {
+impl<'db> AstId<'db, ast::Macro> {
     /// Fetches (and compiles) the expander of this decl macro.
     #[salsa::tracked(returns(ref))]
     pub fn decl_macro_expander(

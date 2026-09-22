@@ -958,7 +958,7 @@ impl<'db> VariantFields<'db> {
 fn lower_field_list<'db>(
     db: &'db dyn SourceDatabase,
     module: ModuleId,
-    fields: InFile<Option<ast::FieldList>>,
+    fields: InFile<'_, Option<ast::FieldList>>,
     override_visibility: Option<Option<ast::Visibility>>,
 ) -> Option<(Arena<FieldData<'db>>, ExpressionStore<'db>, ExpressionStoreSourceMap<'db>)> {
     let file_id = fields.file_id;
@@ -983,7 +983,7 @@ fn lower_field_list<'db>(
 fn lower_fields<'db, Field: ast::HasAttrs + ast::HasVisibility>(
     db: &'db dyn SourceDatabase,
     module: ModuleId,
-    fields: InFile<impl Iterator<Item = (Option<ast::Type>, Field)>>,
+    fields: InFile<'_, impl Iterator<Item = (Option<ast::Type>, Field)>>,
     mut field_name: impl FnMut(usize, &Field) -> Name,
     override_visibility: Option<Option<ast::Visibility>>,
 ) -> Option<(Arena<FieldData<'db>>, ExpressionStore<'db>, ExpressionStoreSourceMap<'db>)> {

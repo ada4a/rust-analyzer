@@ -89,7 +89,7 @@ enum Scope<'db> {
     /// Local bindings
     ExprScope(ExprScope<'db>),
     /// Macro definition inside bodies that affects all paths after it in the same block.
-    MacroDefScope(MacroDefId),
+    MacroDefScope(MacroDefId<'db>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -566,7 +566,7 @@ impl<'db> Resolver<'db> {
         db: &'db dyn SourceDatabase,
         path: &ModPath,
         expected_macro_kind: Option<MacroSubNs>,
-    ) -> Option<MacroDefId> {
+    ) -> Option<MacroDefId<'db>> {
         self.resolve_path_as_macro(db, path, expected_macro_kind).map(|it| it.def.definition(db))
     }
 
@@ -976,11 +976,11 @@ impl<'db> Resolver<'db> {
 }
 
 #[inline]
-fn handle_macro_def_scope(
-    db: &dyn SourceDatabase,
+fn handle_macro_def_scope<'db>(
+    db: &'db dyn SourceDatabase,
     hygiene_id: &mut HygieneId,
-    hygiene_info: &mut Option<(SyntaxContext, MacroDefId)>,
-    macro_id: &MacroDefId,
+    hygiene_info: &mut Option<(SyntaxContext, MacroDefId<'db>)>,
+    macro_id: &MacroDefId<'db>,
 ) {
     if let Some((parent_ctx, label_macro_id)) = hygiene_info
         && label_macro_id == macro_id
@@ -997,10 +997,10 @@ fn handle_macro_def_scope(
 }
 
 #[inline]
-fn hygiene_info(
-    db: &dyn SourceDatabase,
+fn hygiene_info<'db>(
+    db: &'db dyn SourceDatabase,
     hygiene_id: HygieneId,
-) -> Option<(SyntaxContext, MacroDefId)> {
+) -> Option<(SyntaxContext, MacroDefId<'db>)> {
     if !hygiene_id.is_root() {
         let ctx = hygiene_id.syntax_context();
         ctx.outer_expn(db).map(|expansion| {

@@ -38,9 +38,9 @@ impl<'db> SpanMap<'db> {
     }
 }
 
-impl HirFileId {
+impl<'db> HirFileId<'db> {
     #[inline]
-    pub fn span_map<'db>(self, db: &'db dyn SourceDatabase) -> SpanMap<'db> {
+    pub fn span_map(self, db: &'db dyn SourceDatabase) -> SpanMap<'db> {
         match self {
             HirFileId::FileId(file_id) => SpanMap::RealSpanMap(real_span_map(db, file_id)),
             HirFileId::MacroFile(m) => SpanMap::ExpansionSpanMap(m.expansion_span_map(db)),
@@ -114,8 +114,8 @@ pub(crate) fn real_span_map(
     )
 }
 
-impl MacroCallId {
-    pub fn expansion_span_map(self, db: &dyn SourceDatabase) -> &ExpansionSpanMap {
+impl<'db> MacroCallId<'db> {
+    pub fn expansion_span_map(self, db: &'db dyn SourceDatabase) -> &'db ExpansionSpanMap {
         &self.parse_macro_expansion(db).value.1
     }
 }

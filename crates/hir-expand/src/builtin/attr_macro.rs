@@ -15,7 +15,7 @@ macro_rules! register_builtin {
         }
 
         impl BuiltinAttrExpander {
-            pub fn expander(&self) -> fn(&dyn SourceDatabase, MacroCallId, &tt::TopSubtree, Span) -> ExpandResult<tt::TopSubtree>  {
+            pub fn expander(&self) -> fn(&dyn SourceDatabase, MacroCallId<'_>, &tt::TopSubtree, Span) -> ExpandResult<tt::TopSubtree>  {
                 match *self {
                     $( BuiltinAttrExpander::$variant => $expand, )*
                 }
@@ -36,7 +36,7 @@ impl BuiltinAttrExpander {
     pub fn expand(
         &self,
         db: &dyn SourceDatabase,
-        id: MacroCallId,
+        id: MacroCallId<'_>,
         tt: &tt::TopSubtree,
         span: Span,
     ) -> ExpandResult<tt::TopSubtree> {
@@ -76,7 +76,7 @@ pub fn find_builtin_attr(ident: &name::Name) -> Option<BuiltinAttrExpander> {
 
 fn dummy_attr_expand(
     _db: &dyn SourceDatabase,
-    _id: MacroCallId,
+    _id: MacroCallId<'_>,
     tt: &tt::TopSubtree,
     _span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -85,7 +85,7 @@ fn dummy_attr_expand(
 
 fn dummy_gate_test_expand(
     _db: &dyn SourceDatabase,
-    _id: MacroCallId,
+    _id: MacroCallId<'_>,
     tt: &tt::TopSubtree,
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -119,7 +119,7 @@ fn dummy_gate_test_expand(
 /// hir::Semantics to make this work.
 fn derive_expand(
     db: &dyn SourceDatabase,
-    id: MacroCallId,
+    id: MacroCallId<'_>,
     tt: &tt::TopSubtree,
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
