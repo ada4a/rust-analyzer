@@ -4,6 +4,7 @@ use std::ops;
 
 use base_db::SourceDatabase;
 use hir_expand::{InFile, Lookup};
+use salsa::SalsaValue;
 use span::Edition;
 use syntax::{SyntaxNodePtr, ast};
 use triomphe::Arc;
@@ -17,7 +18,7 @@ use crate::{
     src::HasSource,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, SalsaValue)]
 pub struct Param<Id> {
     /// The id of the formal parameter. In analysis, you want to use this: it has a special status as a parameter,
     /// while [`user_written`][Self::user_written] is just a local variable.
@@ -36,7 +37,7 @@ impl<Id: Copy> Param<Id> {
 }
 
 /// The body of an item (function, const etc.).
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, SalsaValue)]
 pub struct Body<'db> {
     pub store: ExpressionStore<'db>,
     /// The patterns for the function's parameters. While the parameter types are
@@ -69,7 +70,7 @@ impl<'db> ops::Deref for Body<'db> {
 /// both the HirFileId and the position inside the file. However, we only store
 /// AST -> ExprId mapping for non-macro files, as it is not clear how to handle
 /// this properly for macros.
-#[derive(Default, Debug, Eq, PartialEq)]
+#[derive(Default, Debug, Eq, PartialEq, SalsaValue)]
 pub struct BodySourceMap<'db> {
     pub self_param: Option<InFile<SelfParamPtr>>,
     pub store: ExpressionStoreSourceMap<'db>,

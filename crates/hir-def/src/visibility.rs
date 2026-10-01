@@ -5,6 +5,7 @@ use std::iter;
 use base_db::{Crate, SourceDatabase};
 use hir_expand::{InFile, Lookup};
 use la_arena::ArenaMap;
+use salsa::SalsaValue;
 use syntax::ast::{self, HasVisibility};
 
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
 pub use crate::item_tree::{RawVisibility, VisibilityExplicitness};
 
 /// Visibility of an item, with the path resolved.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum Visibility {
     /// Visibility is restricted to a certain module.
     Module(ModuleId, VisibilityExplicitness),

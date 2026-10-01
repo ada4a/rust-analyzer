@@ -24,6 +24,7 @@ use hir_expand::{MacroDefId, name::Name};
 use intern::Symbol;
 use la_arena::{Idx, RawIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use salsa::SalsaValue;
 use syntax::ast;
 use thin_vec::ThinVec;
 use type_ref::TypeRefId;
@@ -264,7 +265,7 @@ impl From<ast::LiteralKind> for Literal {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Copy)]
+#[derive(Debug, Clone, Eq, PartialEq, Copy, SalsaValue)]
 pub enum RecordSpread<'db> {
     None,
     FieldDefaults,
@@ -277,7 +278,7 @@ pub enum Unsafe {
     No,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, SalsaValue)]
 pub enum Expr<'db> {
     /// This is produced if the syntax tree does not have a required expression piece.
     Missing,
@@ -471,13 +472,13 @@ pub enum LoopSource {
     ForLoop,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct OffsetOf<'db> {
     pub container: TypeRefId<'db>,
     pub fields: Box<[Name]>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct InlineAsm<'db> {
     pub operands: Box<[(Option<Name>, AsmOperand<'db>)]>,
     pub options: AsmOptions,
@@ -557,7 +558,7 @@ impl std::fmt::Debug for AsmOptions {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, SalsaValue)]
 pub enum AsmOperand<'db> {
     In {
         reg: InlineAsmRegOrRegClass,
@@ -652,26 +653,26 @@ pub enum Movability {
     Movable,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, SalsaValue)]
 pub enum Array<'db> {
     ElementList { elements: Box<[ExprId<'db>]> },
     Repeat { initializer: ExprId<'db>, repeat: ExprId<'db> },
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, SalsaValue)]
 pub struct MatchArm<'db> {
     pub pat: PatId<'db>,
     pub guard: Option<ExprId<'db>>,
     pub expr: ExprId<'db>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, SalsaValue)]
 pub struct RecordLitField<'db> {
     pub name: Name,
     pub expr: ExprId<'db>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, SalsaValue)]
 pub enum Statement<'db> {
     Let {
         pat: PatId<'db>,
@@ -686,7 +687,7 @@ pub enum Statement<'db> {
     Item(Item<'db>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub enum Item<'db> {
     MacroDef(Box<MacroDefId>, PhantomData<&'db ()>),
     Other,
@@ -745,14 +746,14 @@ pub struct Binding {
     pub hygiene: HygieneId,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, SalsaValue)]
 pub struct RecordFieldPat<'db> {
     pub name: Name,
     pub pat: PatId<'db>,
 }
 
 /// Close relative to rustc's hir::PatKind
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, SalsaValue)]
 pub enum Pat<'db> {
     Missing,
     /// A rest pattern. Not valid outside special context.

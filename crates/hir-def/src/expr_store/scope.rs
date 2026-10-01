@@ -4,6 +4,7 @@ use std::mem;
 use base_db::SourceDatabase;
 use hir_expand::{MacroDefId, name::Name};
 use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
+use salsa::SalsaValue;
 
 use crate::{
     BlockId, DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, VariantId,
@@ -18,7 +19,7 @@ use crate::{
 
 pub type ScopeId = Idx<ScopeData>;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, SalsaValue)]
 pub struct ExprScopes<'db> {
     scopes: Arena<ScopeData>,
     scope_entries: Arena<ScopeEntry>,

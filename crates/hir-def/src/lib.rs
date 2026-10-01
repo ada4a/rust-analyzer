@@ -71,7 +71,7 @@ use hir_expand::{
 use intern::{Interned, sym};
 use nameres::DefMap;
 use rustc_abi::ExternAbi;
-use salsa::{Durability, Setter};
+use salsa::{Durability, SalsaValue, Setter};
 use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
 use stdx::impl_from;
 use syntax::{AstNode, ast};
@@ -642,7 +642,7 @@ pub struct TupleFieldId {
     pub index: u32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, SalsaValue)]
 pub struct TypeOrConstParamId<'db> {
     // FIXME: Store this as an erased `salsa::Id` to save space
     pub parent: GenericDefId,
@@ -650,7 +650,7 @@ pub struct TypeOrConstParamId<'db> {
 }
 
 /// A TypeOrConstParamId with an invariant that it actually belongs to a type
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub struct TypeParamId<'db>(TypeOrConstParamId<'db>);
 
 impl<'db> TypeParamId<'db> {

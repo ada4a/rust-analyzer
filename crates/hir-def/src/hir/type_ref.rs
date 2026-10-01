@@ -4,6 +4,7 @@
 use hir_expand::name::Name;
 use la_arena::Idx;
 use rustc_abi::ExternAbi;
+use salsa::SalsaValue;
 use thin_vec::ThinVec;
 
 use crate::{
@@ -70,7 +71,7 @@ impl Rawness {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, SalsaValue)]
 /// A `TypeRefId` that is guaranteed to always be `TypeRef::Path`. We use this for things like
 /// impl's trait, that are always paths but need to be traced back to source code.
 pub struct PathId<'db>(TypeRefId<'db>);
@@ -87,12 +88,12 @@ impl<'db> PathId<'db> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, SalsaValue)]
 pub struct TraitRef<'db> {
     pub path: PathId<'db>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, SalsaValue)]
 pub struct FnType<'db> {
     pub binder: Option<Box<[Name]>>,
     pub params: Box<[(Option<Name>, TypeRefId<'db>)]>,
@@ -109,13 +110,13 @@ impl<'db> FnType<'db> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, SalsaValue)]
 pub struct ArrayType<'db> {
     pub ty: TypeRefId<'db>,
     pub len: ConstRef<'db>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, SalsaValue)]
 pub struct RefType<'db> {
     pub ty: TypeRefId<'db>,
     pub lifetime: Option<LifetimeRefId>,
@@ -123,7 +124,7 @@ pub struct RefType<'db> {
 }
 
 /// Compare ty::Ty
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, SalsaValue)]
 pub enum TypeRef<'db> {
     Never,
     Placeholder,
@@ -160,7 +161,7 @@ pub enum LifetimeRef {
     Error,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, SalsaValue)]
 pub enum TypeBound<'db> {
     Path(PathId<'db>, TraitBoundModifier),
     ForLifetime(ThinVec<Name>, PathId<'db>),
@@ -205,7 +206,7 @@ impl<'db> TypeBound<'db> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct ConstRef<'db> {
     pub expr: ExprId<'db>,
 }

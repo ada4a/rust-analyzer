@@ -12,6 +12,7 @@ use hir_expand::{
 use intern::sym;
 use la_arena::{Arena, Idx};
 use rustc_abi::{ExternAbi, IntegerType, ReprOptions};
+use salsa::SalsaValue;
 use syntax::{
     AstNode, NodeOrToken, SyntaxNodePtr, T,
     ast::{self, HasGenericParams, HasName, HasVisibility, IsString},
@@ -41,7 +42,7 @@ fn as_name_opt(name: Option<ast::Name>) -> Name {
     name.map_or_else(Name::missing, |it| it.as_name())
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, SalsaValue)]
 pub struct StructSignature<'db> {
     pub name: Name,
     pub generic_params: GenericParams<'db>,
@@ -155,7 +156,7 @@ fn adt_shape(adt_kind: ast::StructKind) -> FieldsShape {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, SalsaValue)]
 pub struct UnionSignature<'db> {
     pub name: Name,
     pub generic_params: GenericParams<'db>,
@@ -231,7 +232,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, SalsaValue)]
 pub struct EnumSignature<'db> {
     pub name: Name,
     pub generic_params: GenericParams<'db>,
@@ -312,7 +313,7 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, SalsaValue)]
 pub struct ConstSignature<'db> {
     pub name: Option<Name>,
     // generic_params: GenericParams,
@@ -379,7 +380,7 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, SalsaValue)]
 pub struct StaticSignature<'db> {
     pub name: Name,
 
@@ -452,7 +453,7 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, SalsaValue)]
 pub struct ImplSignature<'db> {
     pub generic_params: GenericParams<'db>,
     pub store: ExpressionStore<'db>,
@@ -524,7 +525,7 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, SalsaValue)]
 pub struct TraitSignature<'db> {
     pub name: Name,
     pub generic_params: GenericParams<'db>,
@@ -609,7 +610,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, SalsaValue)]
 pub struct FunctionSignature<'db> {
     pub name: Name,
     pub generic_params: GenericParams<'db>,
@@ -796,7 +797,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, SalsaValue)]
 pub struct TypeAliasSignature<'db> {
     pub name: Name,
     pub generic_params: GenericParams<'db>,
@@ -856,7 +857,7 @@ pub struct VariantFieldsBody<'db> {
 }
 
 /// A single field of an enum variant or struct
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct FieldData<'db> {
     pub name: Name,
     pub type_ref: TypeRefId<'db>,
@@ -867,7 +868,7 @@ pub struct FieldData<'db> {
 
 pub type LocalFieldId<'db> = Idx<FieldData<'db>>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct VariantFields<'db> {
     fields: Arena<FieldData<'db>>,
     pub store: ExpressionStore<'db>,

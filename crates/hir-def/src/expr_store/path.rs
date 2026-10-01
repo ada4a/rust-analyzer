@@ -11,8 +11,9 @@ use hir_expand::{
     name::Name,
 };
 use intern::Interned;
+use salsa::SalsaValue;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum Path<'db> {
     /// `BarePath` is used when the path has neither generics nor type anchor, since the vast majority of paths
     /// are in this category, and splitting `Path` this way allows it to be more thin. When the path has either generics
@@ -33,7 +34,7 @@ const _: () = {
     assert!(size_of::<Option<Path<'_>>>() == 24);
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct NormalPath<'db> {
     pub generic_args: Box<[Option<GenericArgs<'db>>]>,
     pub type_anchor: Option<TypeRefId<'db>>,
@@ -55,7 +56,7 @@ pub enum GenericArgsParentheses {
 
 /// Generic arguments to a path segment (e.g. the `i32` in `Option<i32>`). This
 /// also includes bindings of associated types, like in `Iterator<Item = Foo>`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct GenericArgs<'db> {
     pub args: Box<[GenericArg<'db>]>,
     /// This specifies whether the args contain a Self type as the first
@@ -71,7 +72,7 @@ pub struct GenericArgs<'db> {
 }
 
 /// An associated type binding like in `Iterator<Item = T>`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct AssociatedTypeBinding<'db> {
     /// The name of the associated type.
     pub name: Name,
@@ -88,7 +89,7 @@ pub struct AssociatedTypeBinding<'db> {
 }
 
 /// A single generic argument.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum GenericArg<'db> {
     Type(TypeRefId<'db>),
     Lifetime(LifetimeRefId),

@@ -20,6 +20,7 @@ use either::Either;
 use hir_expand::{InFile, MacroCallId, mod_path::ModPath, name::Name};
 use la_arena::{Arena, ArenaMap};
 use rustc_hash::FxHashMap;
+use salsa::SalsaValue;
 use smallvec::SmallVec;
 use span::{Edition, SyntaxContext};
 use syntax::{AstPtr, SyntaxNodePtr, ast};
@@ -48,7 +49,7 @@ pub use self::lower::{
 };
 
 /// A wrapper around [`span::SyntaxContext`] that is intended only for comparisons.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub struct HygieneId(span::SyntaxContext);
 
 impl HygieneId {
@@ -98,7 +99,7 @@ pub type TypeSource = InFile<TypePtr>;
 pub type LifetimePtr = AstPtr<ast::Lifetime>;
 pub type LifetimeSource = InFile<LifetimePtr>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, SalsaValue)]
 struct ExprRoot<'db> {
     root: ExprId<'db>,
     // We store, for each root, the range of exprs (and pats and bindings) it holds.
@@ -111,7 +112,7 @@ struct ExprRoot<'db> {
 
 // We split the store into types-only and expressions, because most stores (e.g. generics)
 // don't store any expressions and this saves memory. Same thing for the source map.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 struct ExpressionOnlyStore<'db> {
     exprs: Arena<Expr<'db>>,
     pats: Arena<Pat<'db>>,
@@ -157,21 +158,25 @@ struct ExpressionOnlyStore<'db> {
     expr_roots: SmallVec<[ExprRoot<'db>; 1]>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct ExpressionStore<'db> {
     expr_only: Option<Box<ExpressionOnlyStore<'db>>>,
     pub types: Arena<TypeRef<'db>>,
     pub lifetimes: Arena<LifetimeRef>,
 }
 
-#[derive(Debug, Eq, Default)]
+#[derive(Debug, Eq, Default, SalsaValue)]
 struct ExpressionOnlySourceMap<'db> {
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
     expr_map: FxHashMap<ExprSource, ExprOrPatIdPacked>,
+    // SAFETY: `ExprId<'db>` is the only thing with a `'db` lifetime, so only it needs to be chedked
+    #[salsa_value(unsafe(prove(ExprId<'db>: SalsaValue)))]
     expr_map_back: ArenaMap<ExprId<'db>, ExprOrPatSource>,
 
     pat_map: FxHashMap<PatSource, ExprOrPatIdPacked>,
+    // SAFETY: `PatId<'db>` is the only thing with a `'db` lifetime, so only it needs to be chedked
+    #[salsa_value(unsafe(prove(PatId<'db>: SalsaValue)))]
     pat_map_back: ArenaMap<PatId<'db>, ExprOrPatSource>,
 
     label_map: FxHashMap<LabelSource, LabelId>,
@@ -184,7 +189,11 @@ struct ExpressionOnlySourceMap<'db> {
 
     /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
     /// Instead, we use id of expression (`92`) to identify the field.
+    // SAFETY: `ExprId<'db>` is the only thing with a `'db` lifetime, so only it needs to be chedked
+    #[salsa_value(unsafe(prove(ExprId<'db>: SalsaValue)))]
     field_map_back: FxHashMap<ExprId<'db>, FieldSource>,
+    // SAFETY: `PatId<'db>` is the only thing with a `'db` lifetime, so only it needs to be chedked
+    #[salsa_value(unsafe(prove(PatId<'db>: SalsaValue)))]
     pat_field_map_back: FxHashMap<PatId<'db>, PatFieldSource>,
 
     template_map: Option<Box<FormatTemplate<'db>>>,
@@ -230,11 +239,15 @@ impl PartialEq for ExpressionOnlySourceMap<'_> {
     }
 }
 
-#[derive(Debug, Eq, Default)]
+#[derive(Debug, Eq, Default, SalsaValue)]
 pub struct ExpressionStoreSourceMap<'db> {
     expr_only: Option<Box<ExpressionOnlySourceMap<'db>>>,
 
+    // SAFETY: `TypeRefId<'db>` is the only thing with a `'db` lifetime, so only it needs to be chedked
+    #[salsa_value(unsafe(prove(TypeRefId<'db>: SalsaValue)))]
     types_map_back: ArenaMap<TypeRefId<'db>, TypeSource>,
+    // SAFETY: `TypeRefId<'db>` is the only thing with a `'db` lifetime, so only it needs to be chedked
+    #[salsa_value(unsafe(prove(TypeRefId<'db>: SalsaValue)))]
     types_map: FxHashMap<TypeSource, TypeRefId<'db>>,
 
     lifetime_map_back: ArenaMap<LifetimeRefId, LifetimeSource>,
@@ -311,17 +324,23 @@ pub struct ExpressionStoreBuilder<'db> {
     pub(crate) diagnostics: Vec<ExpressionStoreDiagnostics>,
 }
 
-#[derive(Default, Debug, Eq, PartialEq)]
+#[derive(Default, Debug, Eq, PartialEq, SalsaValue)]
 struct FormatTemplate<'db> {
     /// A map from `format_args!()` expressions to their captures.
+    // SAFETY: `ExprId<'db>` is the only thing with a `'db` lifetime, so only it needs to be chedked
+    #[salsa_value(unsafe(prove(ExprId<'db>: SalsaValue)))]
     format_args_to_captures: FxHashMap<ExprId<'db>, (HygieneId, Vec<(syntax::TextRange, Name)>)>,
     /// A map from `asm!()` expressions to their captures.
+    // SAFETY: `ExprId<'db>` is the only thing with a `'db` lifetime, so only it needs to be chedked
+    #[salsa_value(unsafe(prove(ExprId<'db>: SalsaValue)))]
     asm_to_captures: FxHashMap<ExprId<'db>, Vec<Vec<(syntax::TextRange, usize)>>>,
     /// A map from desugared expressions of implicit captures to their source.
     ///
     /// The value stored for each capture is its template literal and offset inside it. The template literal
     /// is from the `format_args[_nl]!()` macro and so needs to be mapped up once to go to the user-written
     /// template.
+    // SAFETY: `ExprId<'db>` is the only thing with a `'db` lifetime, so only it needs to be chedked
+    #[salsa_value(unsafe(prove(ExprId<'db>: SalsaValue)))]
     implicit_capture_to_source: FxHashMap<ExprId<'db>, InFile<(ExprPtr, TextRange)>>,
 }
 

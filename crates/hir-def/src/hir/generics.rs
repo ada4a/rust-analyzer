@@ -4,6 +4,7 @@ use std::{ops, sync::LazyLock};
 use base_db::SourceDatabase;
 use hir_expand::name::Name;
 use la_arena::{Arena, Idx, RawIdx};
+use salsa::SalsaValue;
 use stdx::impl_from;
 use thin_vec::ThinVec;
 
@@ -21,7 +22,7 @@ pub type LocalTypeOrConstParamId<'db> = Idx<TypeOrConstParamData<'db>>;
 pub type LocalLifetimeParamId = Idx<LifetimeParamData>;
 
 /// Data about a generic type parameter (to a function, struct, impl, ...).
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash, SalsaValue)]
 pub struct TypeParamData<'db> {
     /// [`None`] only if the type ref is an [`crate::type_ref::TypeRef::ImplTrait`].
     pub name: Option<Name>,
@@ -55,7 +56,7 @@ impl LifetimeParamData {
 }
 
 /// Data about a generic const parameter (to a function, struct, impl, ...).
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash, SalsaValue)]
 pub struct ConstParamData<'db> {
     pub name: Name,
     pub ty: TypeRefId<'db>,
@@ -69,7 +70,7 @@ pub enum TypeParamProvenance {
     ArgumentImplTrait,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash, SalsaValue)]
 pub enum TypeOrConstParamData<'db> {
     TypeParamData(TypeParamData<'db>),
     ConstParamData(ConstParamData<'db>),
@@ -164,7 +165,7 @@ pub enum GenericParamDataRef<'a, 'db> {
 }
 
 /// Data about the generic parameters of a function, struct, impl, etc.
-#[derive(PartialEq, Eq, Debug, Hash, Default)]
+#[derive(PartialEq, Eq, Debug, Hash, Default, SalsaValue)]
 pub struct GenericParams<'db> {
     pub(crate) type_or_consts: Arena<TypeOrConstParamData<'db>>,
     pub(crate) lifetimes: Arena<LifetimeParamData>,
@@ -190,7 +191,7 @@ impl<'db> ops::Index<LocalLifetimeParamId> for GenericParams<'db> {
 /// where clauses like `where T: Foo + Bar` are turned into multiple of these.
 /// It might still result in multiple actual predicates though, because of
 /// associated type bindings like `Iterator<Item = u32>`.
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash, SalsaValue)]
 pub enum WherePredicate<'db> {
     TypeBound { lifetimes: Option<ThinVec<Name>>, target: TypeRefId<'db>, bound: TypeBound<'db> },
     Lifetime { target: LifetimeRefId, bound: LifetimeRefId },
