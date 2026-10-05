@@ -9,7 +9,7 @@ use hir_def::{
     hir::{BindingId, LabelId},
     item_scope::ItemInNs as ItemInNsId,
 };
-use hir_ty::next_solver::AnyImplId;
+use hir_ide::next_solver::AnyImplId;
 use stdx::impl_from;
 
 use crate::{
@@ -61,12 +61,12 @@ impl<'db> From<crate::Function<'db>> for crate::AnyFunctionId<'db> {
         ty.id
     }
 }
-impl<'db> From<hir_ty::next_solver::AnyImplId<'db>> for crate::Impl<'db> {
-    fn from(id: hir_ty::next_solver::AnyImplId<'db>) -> Self {
+impl<'db> From<hir_ide::next_solver::AnyImplId<'db>> for crate::Impl<'db> {
+    fn from(id: hir_ide::next_solver::AnyImplId<'db>) -> Self {
         Self { id }
     }
 }
-impl<'db> From<crate::Impl<'db>> for hir_ty::next_solver::AnyImplId<'db> {
+impl<'db> From<crate::Impl<'db>> for hir_ide::next_solver::AnyImplId<'db> {
     fn from(ty: crate::Impl<'db>) -> Self {
         ty.id
     }
