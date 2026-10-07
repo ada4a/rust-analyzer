@@ -52,7 +52,8 @@ use crate::{
         ImplOrTraitAssocTyId, InherentAssocConstId, InherentAssocTermId, InherentAssocTyId,
         LateParamRegion, OpaqueTyIdWrapper, OpaqueTypeKey, RegionAssumptions, ScalarInt,
         SimplifiedType, SolverContext, SolverDefIds, TermId, TraitAssocConstId, TraitAssocTermId,
-        TraitAssocTyId, TraitIdWrapper, TypeAliasIdWrapper, UnevaluatedConst, Unnormalized,
+        TraitAssocTyId, TraitIdWrapper, TypeAliasIdWrapper, UnevaluatedConst, UnevaluatedConstKind,
+        Unnormalized,
         util::{explicit_item_bounds, explicit_item_self_bounds},
     },
 };
@@ -2191,7 +2192,12 @@ impl<'db> Interner for DbInterner<'db> {
         };
         EarlyBinder::bind(Const::new_unevaluated(
             self,
-            UnevaluatedConst { def: GeneralConstIdWrapper(id), args: GenericArgs::empty() },
+            // UnevaluatedConst { def: GeneralConstIdWrapper(id), args: GenericArgs::empty() },
+            UnevaluatedConst::new(
+                self,
+                UnevaluatedConstKind::Free { def_id: FreeConstAliasId(id) },
+                GenericArgs::empty(),
+            ),
         ))
     }
 
@@ -2215,6 +2221,23 @@ impl<'db> Interner for DbInterner<'db> {
                 AliasTyKind::Opaque { def_id: def_id.into() }
             }
             _ => unreachable!(),
+        }
+    }
+
+    fn unevaluated_const_kind_from_def_id(self, def_id: Self::DefId) -> UnevaluatedConstKind<'db> {
+        match def_id {
+            SolveDefId::AssocConst { .. } => {
+                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) {
+                    UnevaluatedConstKind::Inherent { def_id }
+                } else {
+                    UnevaluatedConstKind::Projection { def_id }
+                }
+            }
+            DefKind::Const { .. } => ty::UnevaluatedConstKind::Free { def_id },
+            DefKind::AnonConst | DefKind::InlineConst | DefKind::Ctor(_, CtorKind::Const) => {
+                ty::UnevaluatedConstKind::Anon { def_id }
+            }
+            kind => bug!("unexpected DefKind in UnevaluatedConst: {kind:?}"),
         }
     }
 

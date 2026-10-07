@@ -1962,7 +1962,8 @@ impl<'a, 'db> Evaluator<'a, 'db> {
     ) -> Result<'db, Interval> {
         match konst.kind() {
             ConstKind::Value(value) => self.allocate_valtree_in_heap(value.ty, value.value),
-            ConstKind::Unevaluated(UnevaluatedConst { def: const_id, args: subst }) => {
+            ConstKind::Unevaluated(UnevaluatedConst { args: subst, kind, .. }) => {
+                let const_id = kind.def_id();
                 let mut id = const_id.0;
                 let mut subst = subst;
                 if let GeneralConstId::ConstId(c) = id {
